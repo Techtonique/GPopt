@@ -5,7 +5,7 @@ Bayesian Optimization using Gaussian Process Regression
 
 
 ![PyPI](https://img.shields.io/pypi/v/gpopt) [![PyPI - License](https://img.shields.io/pypi/l/gpopt)](./LICENSE) [![Downloads](https://pepy.tech/badge/gpopt)](https://pepy.tech/project/gpopt)
-[![Documentation](https://img.shields.io/badge/documentation-is_here-green)](https://techtonique.github.io/gpopt/)
+[![Documentation](https://img.shields.io/badge/documentation-is_here-green)](https://techtonique.github.io/GPopt/)
 
 Installation / Usage
 --------------------
