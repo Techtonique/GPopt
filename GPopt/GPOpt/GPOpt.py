@@ -418,30 +418,30 @@ class GPOpt:
         
                         x_next = self.x_init[i, :]
         
-                        #try:
+                        try:
     
-                        if self.per_second is True: 
+                            if self.per_second is True: 
+                                
+                                start = time()
+                                score = self.objective_func(
+                                x_next, *func_args
+                                )                                                                            
+                                self.timings.append(np.log(time() - start))
+                                
+                            else: # self.per_second is False
+                                
+                                score = self.objective_func(
+                                x_next, *func_args
+                                )                        
                             
-                            start = time()
-                            score = self.objective_func(
-                            x_next, *func_args
-                            )                                                                            
-                            self.timings.append(np.log(time() - start))
-                            
-                        else:
-                            
-                            score = self.objective_func(
-                            x_next, *func_args
-                            )                        
-                        
-                        self.scores.append(score)
-    
-                        if self.save is not None:
-                            self.update_shelve()
+                            self.scores.append(score)
         
-                        #except:
+                            if self.save is not None:
+                                self.update_shelve()
         
-                        #    continue
+                        except:
+
+                            continue
         
                         if verbose == 1:
                             progbar.update(i)  # update progress bar
@@ -451,6 +451,7 @@ class GPOpt:
                                 f"point: {x_next}; score: {score}"
                             )
                     # end loop # calculate scores on initial design
+                    
                     if verbose == 1:
                         progbar.update(self.n_init)
                             
