@@ -459,8 +459,8 @@ class GPOpt:
                     
                     assert self.per_second is False, "timings not calculated here"
                     
-                    scores = Parallel(n_jobs=self.n_jobs, prefer="threads")(delayed(self.eval_objective)(self, i) for i in tqdm(range(self.n_init)))
-                    
+                    scores = Parallel(n_jobs=self.n_jobs, prefer="threads")(delayed(self.eval_objective)(i) for i in tqdm(range(self.n_init)))
+                             
                     self.scores = scores
                     
                     if self.save is not None:
