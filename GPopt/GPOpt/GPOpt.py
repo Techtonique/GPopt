@@ -407,7 +407,7 @@ class GPOpt:
                 self.update_shelve()
            
             
-            if self.y_init is None: # calculate scores
+            if self.y_init is None: # calculate scores on initial design
                 
                 assert self.objective_func is not None, \
                 "self.y_init is None: must have 'objective_func' not None"
@@ -425,7 +425,9 @@ class GPOpt:
                                 start = time()
                                 score = self.objective_func(
                                 x_next, *func_args
-                                )                                                                            
+                                )                          
+                                if (np.isfinite(score)==False) or (np.isnan(score)==False):
+                                    continue        
                                 self.timings.append(np.log(time() - start))
                                 
                             else: # self.per_second is False
@@ -433,6 +435,8 @@ class GPOpt:
                                 score = self.objective_func(
                                 x_next, *func_args
                                 )                        
+                                if (np.isfinite(score)==False) or (np.isnan(score)==False):
+                                    continue        
                             
                             self.scores.append(score)
         
@@ -542,6 +546,9 @@ class GPOpt:
                         
                         score_next_param = self.objective_func(
                             next_param, *func_args)
+
+                        if (np.isfinite(score_next_param)==False) or (np.isnan(score_next_param)==False):
+                            continue            
                         
                     else:
                         
@@ -551,6 +558,9 @@ class GPOpt:
                         print(f"\n next param: {next_param} \n")
                         score_next_param = float(input("get new score: \n")) # or an API response
 
+                        if (np.isfinite(score_next_param)==False) or (np.isnan(score_next_param)==False):
+                            continue            
+
                     self.timings.append(np.log(time() - start))                            
                     
                 else: # self.per_second is False:
@@ -559,6 +569,9 @@ class GPOpt:
                         
                         score_next_param = self.objective_func(
                         next_param, *func_args)  
+
+                        if (np.isfinite(score_next_param)==False) or (np.isnan(score_next_param)==False):
+                            continue            
                         
                     else:
                         
@@ -567,6 +580,9 @@ class GPOpt:
                         
                         print(f"\n next param: {next_param} \n")
                         score_next_param = float(input("get new score: \n")) # or an API response
+
+                        if (np.isfinite(score_next_param)==False) or (np.isnan(score_next_param)==False):
+                            continue            
                                         
             except:
                 
