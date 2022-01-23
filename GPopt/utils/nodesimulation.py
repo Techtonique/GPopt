@@ -148,27 +148,20 @@ def generate_uniform(n_dims=2, n_points=10, seed=123):
 
 
 # hammersley numbers' generation
-def generate_hammersley(
-    n_dims=2, n_points=100, primes=None
-):
+def generate_hammersley(n_dims=2, n_points=100, primes=None):
     def func_hammersley(
         n_dims=n_dims,
         n_points=(n_points + 1),
         primes=primes,
     ):
-        primes = (
-            primes if primes is not None else saved_primes
-        )
+        primes = primes if primes is not None else saved_primes
         for k in moves.range(n_points):
             points = [k / n_points] + [
-                get_phi(primes[d], k)
-                for d in moves.range(n_dims - 1)
+                get_phi(primes[d], k) for d in moves.range(n_dims - 1)
             ]
             yield points
 
-    return np.array(list(func_hammersley()))[
-        1 : (n_points + 1), :
-    ].transpose()
+    return np.array(list(func_hammersley()))[1 : (n_points + 1), :].transpose()
 
 
 # halton numbers' generation
@@ -178,25 +171,16 @@ def generate_halton(n_dims=2, n_points=10, primes=None):
         n_points=(n_points + 1),
         primes=primes,
     ):
-        primes = (
-            primes if primes is not None else saved_primes
-        )
+        primes = primes if primes is not None else saved_primes
         for k in moves.range(n_points):
-            points = [
-                get_phi(primes[d], k)
-                for d in moves.range(n_dims)
-            ]
+            points = [get_phi(primes[d], k) for d in moves.range(n_dims)]
             yield points
 
-    return np.array(list(func_halton()))[
-        1 : (n_points + 1), :
-    ].transpose()
+    return np.array(list(func_halton()))[1 : (n_points + 1), :].transpose()
 
 
 # sobol numbers' generation
 def generate_sobol2(n_dims=2, n_points=10, skip=2):
     return np.array(
-        sobol_lib.i4_sobol_generate(
-            m=n_dims, n=n_points, skip=skip
-        )
+        sobol_lib.i4_sobol_generate(m=n_dims, n=n_points, skip=skip)
     )
