@@ -415,7 +415,7 @@ class GPOpt:
                                 start = time()
                                 score = self.objective_func(x_next, *func_args)
                                 if (np.isfinite(score) == False) or (
-                                    np.isnan(score) == False
+                                    np.isnan(score) == True
                                 ):
                                     continue
                                 self.timings.append(np.log(time() - start))
@@ -424,7 +424,7 @@ class GPOpt:
 
                                 score = self.objective_func(x_next, *func_args)
                                 if (np.isfinite(score) == False) or (
-                                    np.isnan(score) == False
+                                    np.isnan(score) == True
                                 ):
                                     continue
 
@@ -540,7 +540,7 @@ class GPOpt:
                         )
 
                         if (np.isfinite(score_next_param) == False) or (
-                            np.isnan(score_next_param) == False
+                            np.isnan(score_next_param) == True
                         ):
                             continue
 
@@ -556,7 +556,7 @@ class GPOpt:
                         )  # or an API response
 
                         if (np.isfinite(score_next_param) == False) or (
-                            np.isnan(score_next_param) == False
+                            np.isnan(score_next_param) == True
                         ):
                             continue
 
@@ -571,7 +571,7 @@ class GPOpt:
                         )
 
                         if (np.isfinite(score_next_param) == False) or (
-                            np.isnan(score_next_param) == False
+                            np.isnan(score_next_param) == True
                         ):
                             continue
 
@@ -587,7 +587,7 @@ class GPOpt:
                         )  # or an API response
 
                         if (np.isfinite(score_next_param) == False) or (
-                            np.isnan(score_next_param) == False
+                            np.isnan(score_next_param) == True
                         ):
                             continue
 
