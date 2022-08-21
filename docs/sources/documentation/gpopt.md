@@ -2,6 +2,8 @@
 
 _Bayesian optimization using Gaussian Process Regression_
 
+<span style="float:right;">[[source]](https://github.com/Techtonique/GPopt/blob/main/GPopt/GPOpt/GPOpt.py#L22)</span>
+
 ### GPOpt
 
 
@@ -27,40 +29,40 @@ GPopt.GPOpt.GPOpt.GPOpt(
 
 
 Class GPOpt.
-    
+
 __Arguments:__
 
 lower_bound: a numpy array;
     lower bound for researched minimum
 
-upper_bound: a numpy array; 
-    upper bound for researched minimum 
+upper_bound: a numpy array;
+    upper bound for researched minimum
 
 objective_func: a function;
     the objective function to be minimized
 
-x_init: 
+x_init:
     initial setting of points where `objective_func` is evaluated (optional)
 
-y_init: 
+y_init:
     initial setting values at points where `objective_func` is evaluated (optional)
 
-n_init: an integer; 
-    number of points in the initial setting, when `x_init` and `y_init` are not provided 
+n_init: an integer;
+    number of points in the initial setting, when `x_init` and `y_init` are not provided
 
-n_choices: an integer;  
+n_choices: an integer;
     number of points for the calculation of expected improvement
 
-n_iter: an integer; 
+n_iter: an integer;
     number of iterations of the minimization algorithm
 
 alpha: a float;
     Value added to the diagonal of the kernel matrix during fitting (for Matern 5/2 kernel)
 
 n_restarts_optimizer: an integer;
-    The number of restarts of the optimizer for finding the kernel’s parameters which maximize the log-marginal likelihood. 
+    The number of restarts of the optimizer for finding the kernel’s parameters which maximize the log-marginal likelihood.
 
-seed: an integer; 
+seed: an integer;
     reproducibility seed
 
 save: a string;
@@ -72,14 +74,16 @@ n_jobs: an integer;
 per_second: a boolean;
     __experimental__, default is False (leave to default for now)
 
-log_scale: a boolean;          
+log_scale: a boolean;
     __experimental__, default is False (leave to default for now)
 
-see also [Bayesian Optimization with GPopt](https://thierrymoudiki.github.io/blog/2021/04/16/python/misc/gpopt) 
-    and [Hyperparameters tuning with GPopt](https://thierrymoudiki.github.io/blog/2021/06/11/python/misc/hyperparam-tuning-gpopt)    
+see also [Bayesian Optimization with GPopt](https://thierrymoudiki.github.io/blog/2021/04/16/python/misc/gpopt)
+    and [Hyperparameters tuning with GPopt](https://thierrymoudiki.github.io/blog/2021/06/11/python/misc/hyperparam-tuning-gpopt)
 
 
 ----
+
+<span style="float:right;">[[source]](https://github.com/Techtonique/GPopt/blob/main/GPopt/GPOpt/GPOpt.py#L337)</span>
 
 ### optimize
 
@@ -89,12 +93,12 @@ GPOpt.optimize(verbose=1, n_more_iter=None, abs_tol=None, min_budget=50, func_ar
 ```
 
 
-Launch optimization loop.           
+Launch optimization loop.
 
 __Arguments:__
 
-verbose: an integer; 
-    verbose = 0: nothing is printed,             
+verbose: an integer;
+    verbose = 0: nothing is printed,
     verbose = 1: a progress bar is printed (longer than 0),
     verbose = 2: information about each iteration is printed (longer than 1)
 
@@ -104,17 +108,19 @@ n_more_iter: an integer;
 abs_tol: a float;
     tolerance for convergence of the optimizer (early stopping based on expected improvement)
 
-min_budget: an integer (default is 50); 
+min_budget: an integer (default is 50);
     minimum number of iterations before early stopping controlled by `abs_tol`
 
-func_args: a list; 
+func_args: a list;
     additional parameters for the objective function (if necessary)
 
-see also [Bayesian Optimization with GPopt](https://thierrymoudiki.github.io/blog/2021/04/16/python/misc/gpopt) 
-and [Hyperparameters tuning with GPopt](https://thierrymoudiki.github.io/blog/2021/06/11/python/misc/hyperparam-tuning-gpopt)            
+see also [Bayesian Optimization with GPopt](https://thierrymoudiki.github.io/blog/2021/04/16/python/misc/gpopt)
+and [Hyperparameters tuning with GPopt](https://thierrymoudiki.github.io/blog/2021/06/11/python/misc/hyperparam-tuning-gpopt)
 
 
 ----
+
+<span style="float:right;">[[source]](https://github.com/Techtonique/GPopt/blob/main/GPopt/GPOpt/GPOpt.py#L219)</span>
 
 ### load
 
@@ -134,6 +140,8 @@ See also: [Bayesian Optimization with GPopt Part 2 (save and resume)](https://th
 
 
 ----
+
+<span style="float:right;">[[source]](https://github.com/Techtonique/GPopt/blob/main/GPopt/GPOpt/GPOpt.py#L241)</span>
 
 ### close_shelve
 

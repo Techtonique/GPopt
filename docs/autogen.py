@@ -20,7 +20,7 @@ def generate(dest_dir):
 
     doc_generator = keras_autodoc.DocumentationGenerator(
         pages = PAGES,
-        # project_url = 'https://github.com/Techtonique/GPopt',
+        project_url = 'https://github.com/Techtonique/GPopt/blob/main',
         template_dir = template_dir,
         #GPopt_dir / 'examples'
     )
