@@ -12,11 +12,9 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.gaussian_process.kernels import Matern
 import scipy.stats as st
 from joblib import Parallel, delayed
+from time import time
 from ..utils import generate_sobol2
 from ..utils import Progbar
-from datetime import datetime
-from tqdm import tqdm
-from time import time
 
 
 class GPOpt:
