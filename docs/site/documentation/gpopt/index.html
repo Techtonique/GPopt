@@ -12,19 +12,16 @@
         <link href="../../css/bootstrap.min.css" rel="stylesheet">
         <link href="../../css/font-awesome.min.css" rel="stylesheet">
         <link href="../../css/base.css" rel="stylesheet">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/rainbow.min.css">
-
-        <script src="../../js/jquery-1.10.2.min.js" defer></script>
-        <script src="../../js/bootstrap.min.js" defer></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
-        <script>hljs.initHighlightingOnLoad();</script>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/rainbow.min.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script>
         <script>
             (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
             (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
             m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
             })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
 
-            ga('create', 'UA-146345113-2', 'https://techtonique.github.io/gpopt/');
+            ga('create', "UA-146345113-2", "https://techtonique.github.io/gpopt/");
             ga('send', 'pageview');
         </script> 
     </head>
@@ -110,6 +107,7 @@
 
 <h1 id="gpopt">GPopt</h1>
 <p><em>Bayesian optimization using Gaussian Process Regression</em></p>
+<p><span style="float:right;"><a href="https://github.com/Techtonique/GPopt/blob/main/GPopt/GPOpt/GPOpt.py#L22">[source]</a></span></p>
 <h3 id="gpopt_1">GPOpt</h3>
 <pre><code class="language-python">GPopt.GPOpt.GPOpt.GPOpt(
     lower_bound,
@@ -133,25 +131,25 @@
 <p><strong>Arguments:</strong></p>
 <p>lower_bound: a numpy array;
     lower bound for researched minimum</p>
-<p>upper_bound: a numpy array; 
-    upper bound for researched minimum </p>
+<p>upper_bound: a numpy array;
+    upper bound for researched minimum</p>
 <p>objective_func: a function;
     the objective function to be minimized</p>
-<p>x_init: 
+<p>x_init:
     initial setting of points where <code>objective_func</code> is evaluated (optional)</p>
-<p>y_init: 
+<p>y_init:
     initial setting values at points where <code>objective_func</code> is evaluated (optional)</p>
-<p>n_init: an integer; 
-    number of points in the initial setting, when <code>x_init</code> and <code>y_init</code> are not provided </p>
-<p>n_choices: an integer;<br />
+<p>n_init: an integer;
+    number of points in the initial setting, when <code>x_init</code> and <code>y_init</code> are not provided</p>
+<p>n_choices: an integer;
     number of points for the calculation of expected improvement</p>
-<p>n_iter: an integer; 
+<p>n_iter: an integer;
     number of iterations of the minimization algorithm</p>
 <p>alpha: a float;
     Value added to the diagonal of the kernel matrix during fitting (for Matern 5/2 kernel)</p>
 <p>n_restarts_optimizer: an integer;
-    The number of restarts of the optimizer for finding the kernel’s parameters which maximize the log-marginal likelihood. </p>
-<p>seed: an integer; 
+    The number of restarts of the optimizer for finding the kernel’s parameters which maximize the log-marginal likelihood.</p>
+<p>seed: an integer;
     reproducibility seed</p>
 <p>save: a string;
     Specifies where to save the optimizer in its current state</p>
@@ -159,31 +157,33 @@
     number of jobs for parallel computing on initial setting (can be -1)</p>
 <p>per_second: a boolean;
     <strong>experimental</strong>, default is False (leave to default for now)</p>
-<p>log_scale: a boolean;        <br />
-<strong>experimental</strong>, default is False (leave to default for now)</p>
-<p>see also <a href="https://thierrymoudiki.github.io/blog/2021/04/16/python/misc/gpopt">Bayesian Optimization with GPopt</a> 
-    and <a href="https://thierrymoudiki.github.io/blog/2021/06/11/python/misc/hyperparam-tuning-gpopt">Hyperparameters tuning with GPopt</a>    </p>
+<p>log_scale: a boolean;
+    <strong>experimental</strong>, default is False (leave to default for now)</p>
+<p>see also <a href="https://thierrymoudiki.github.io/blog/2021/04/16/python/misc/gpopt">Bayesian Optimization with GPopt</a>
+    and <a href="https://thierrymoudiki.github.io/blog/2021/06/11/python/misc/hyperparam-tuning-gpopt">Hyperparameters tuning with GPopt</a></p>
 <hr />
+<p><span style="float:right;"><a href="https://github.com/Techtonique/GPopt/blob/main/GPopt/GPOpt/GPOpt.py#L337">[source]</a></span></p>
 <h3 id="optimize">optimize</h3>
 <pre><code class="language-python">GPOpt.optimize(verbose=1, n_more_iter=None, abs_tol=None, min_budget=50, func_args=None)
 </code></pre>
-<p>Launch optimization loop.           </p>
+<p>Launch optimization loop.</p>
 <p><strong>Arguments:</strong></p>
-<p>verbose: an integer; 
-    verbose = 0: nothing is printed,           <br />
+<p>verbose: an integer;
+    verbose = 0: nothing is printed,
     verbose = 1: a progress bar is printed (longer than 0),
     verbose = 2: information about each iteration is printed (longer than 1)</p>
 <p>n_more_iter: an integer;
     additional number of iterations for the optimizer (which has been run once)</p>
 <p>abs_tol: a float;
     tolerance for convergence of the optimizer (early stopping based on expected improvement)</p>
-<p>min_budget: an integer (default is 50); 
+<p>min_budget: an integer (default is 50);
     minimum number of iterations before early stopping controlled by <code>abs_tol</code></p>
-<p>func_args: a list; 
+<p>func_args: a list;
     additional parameters for the objective function (if necessary)</p>
-<p>see also <a href="https://thierrymoudiki.github.io/blog/2021/04/16/python/misc/gpopt">Bayesian Optimization with GPopt</a> 
-and <a href="https://thierrymoudiki.github.io/blog/2021/06/11/python/misc/hyperparam-tuning-gpopt">Hyperparameters tuning with GPopt</a>            </p>
+<p>see also <a href="https://thierrymoudiki.github.io/blog/2021/04/16/python/misc/gpopt">Bayesian Optimization with GPopt</a>
+and <a href="https://thierrymoudiki.github.io/blog/2021/06/11/python/misc/hyperparam-tuning-gpopt">Hyperparameters tuning with GPopt</a></p>
 <hr />
+<p><span style="float:right;"><a href="https://github.com/Techtonique/GPopt/blob/main/GPopt/GPOpt/GPOpt.py#L219">[source]</a></span></p>
 <h3 id="load">load</h3>
 <pre><code class="language-python">GPOpt.load(path)
 </code></pre>
@@ -192,6 +192,7 @@ and <a href="https://thierrymoudiki.github.io/blog/2021/06/11/python/misc/hyperp
 <p>path : a string; path to stored shelve.</p>
 <p>See also: <a href="https://thierrymoudiki.github.io/blog/2021/04/30/python/misc/gpopt">Bayesian Optimization with GPopt Part 2 (save and resume)</a></p>
 <hr />
+<p><span style="float:right;"><a href="https://github.com/Techtonique/GPopt/blob/main/GPopt/GPOpt/GPOpt.py#L241">[source]</a></span></p>
 <h3 id="close_shelve">close_shelve</h3>
 <pre><code class="language-python">GPOpt.close_shelve()
 </code></pre>
@@ -207,12 +208,14 @@ and <a href="https://thierrymoudiki.github.io/blog/2021/06/11/python/misc/hyperp
             <hr>
             <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
         </footer>
+        <script src="../../js/jquery-3.6.0.min.js"></script>
+        <script src="../../js/bootstrap.min.js"></script>
         <script>
             var base_url = "../..",
                 shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
         </script>
-        <script src="../../js/base.js" defer></script>
-        <script src="../../search/main.js" defer></script>
+        <script src="../../js/base.js"></script>
+        <script src="../../search/main.js"></script>
 
         <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
@@ -222,16 +225,13 @@ and <a href="https://thierrymoudiki.github.io/blog/2021/06/11/python/misc/hyperp
                 <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
             </div>
             <div class="modal-body">
-                <p>
-                    From here you can search these documents. Enter
-                    your search terms below.
-                </p>
+                <p>From here you can search these documents. Enter your search terms below.</p>
                 <form>
                     <div class="form-group">
                         <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
                     </div>
                 </form>
-                <div id="mkdocs-search-results"></div>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
             </div>
             <div class="modal-footer">
             </div>
