@@ -31,6 +31,9 @@ class GPOpt:
         objective_func: a function;
             the objective function to be minimized
 
+        gp_obj: a GaussianProcessRegressor object;
+            An ML model for estimating the uncertainty around the objective function        
+
         x_init:
             initial setting of points where `objective_func` is evaluated (optional)
 
@@ -73,10 +76,11 @@ class GPOpt:
     """
 
     def __init__(
-        self,
+        self,        
         lower_bound,
         upper_bound,
         objective_func=None,
+        gp_obj=None,
         x_init=None,
         y_init=None,
         n_init=10,
@@ -117,13 +121,16 @@ class GPOpt:
         self.y_std = None
         self.ei = np.array([])
         self.max_ei = []
-        self.gp_obj = GaussianProcessRegressor(
-            kernel=Matern(nu=2.5),
-            alpha=self.alpha,
-            normalize_y=True,
-            n_restarts_optimizer=self.n_restarts_optimizer,
-            random_state=self.seed,
-        )
+        if gp_obj is None:
+            self.gp_obj = GaussianProcessRegressor(
+                kernel=Matern(nu=2.5),
+                alpha=self.alpha,
+                normalize_y=True,
+                n_restarts_optimizer=self.n_restarts_optimizer,
+                random_state=self.seed,
+            )
+        else:
+            self.gp_obj = gp_obj
 
         # Sobol seqs for initial design and choices
         sobol_seq_init = np.transpose(
