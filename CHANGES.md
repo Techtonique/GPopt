@@ -1,3 +1,7 @@
+# version 0.3.0
+
+- Allow the use of a different surrogate model for the objective (other than the default GP)
+
 # version 0.2.4
 
 - Fix dependencies (well... ^_^)

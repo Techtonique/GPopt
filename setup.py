@@ -1,8 +1,11 @@
+import subprocess
 from setuptools import setup, find_packages
 from codecs import open
 from os import path
 
-__version__ = "0.2.4"
+__version__ = "0.3.0"
+
+subprocess.call("pip install -r requirements.txt", shell=True)
 
 here = path.abspath(path.dirname(__file__))
 

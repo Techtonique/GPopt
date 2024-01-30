@@ -1,3 +1,4 @@
+import os 
 import GPopt as gp 
 import time
 import sys
@@ -6,7 +7,7 @@ import matplotlib.pyplot as plt
 from os import chdir
 from scipy.optimize import minimize
 
-
+print(f"\n ----- Running: {os.path.basename(__file__)}... ----- \n")
 
 # branin
 def branin(x):

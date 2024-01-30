@@ -41,49 +41,48 @@ clean-pyc: ## remove Python file artifacts
 	find . -name '*~' -exec rm -f {} +
 	find . -name '__pycache__' -exec rm -fr {} +
 
-clean-test: ## remove test and coverage artifacts
-	rm -fr .tox/
-	rm -f .coverage
-	rm -fr htmlcov/
-	rm -fr .pytest_cache
+clean-test: ## remove test and coverage artifacts	
+	rm -fr htmlcov
 
 lint: ## check style with flake8
-	flake8 GPopt tests
-
-test: ## run tests quickly with the default Python
-	python setup.py test
-
-test-all: ## run tests on every Python version with tox
-	tox
+	flake8 gpopt tests
 
 coverage: ## check code coverage quickly with the default Python
-	coverage run --source GPopt setup.py test
+	coverage run --source gpopt setup.py test
 	coverage report -m
 	coverage html
 	$(BROWSER) htmlcov/index.html
 
-docs: ## generate mkdocs
-	 rm -rf docs/sources
-	 make install	 
-	 python3 docs/autogen.py	 
+docs: install ## generate docs	
+	pip install pdoc --ignore-installed
+	pdoc GPopt/GPOpt/* --output-dir gpopt-docs
 
-servedocs: docs ## compile the docs watching for changes
-	cd docs&&mkdocs serve
-	cd ..
+servedocs: install ## compile the docs watching for change	 
+	pip install pdoc --ignore-installed
+	pdoc GPopt/GPOpt/*
 
 release: dist ## package and upload a release
-	twine upload dist/*
+	pip install twine --ignore-installed
+	python3 -m twine upload --repository pypi dist/* --verbose
 
 dist: clean ## builds source and wheel package
-	python setup.py sdist
-	python setup.py bdist_wheel
+	python3 setup.py sdist
+	python3 setup.py bdist_wheel	
 	ls -l dist
 
 install: clean ## install the package to the active Python's site-packages
-	python -m pip install .
+	python3 -m pip install .
 
-build-site: docs
-	cd docs&&mkdocs build
-	cp -rf docs/site/* ../../Pro_Website/Techtonique.github.io/GPopt/
+build-site: docs ## export mkdocs website to a folder	
+	cp -rf gpopt-docs/* ../../Pro_Website/Techtonique.github.io/GPopt
 	cd ..
 
+run-examples: install ## run all examples with one command
+	find examples -maxdepth 2 -name "*.py" -exec  python3 {} \;
+
+run-tests: ## run all the tests with one command
+	pip install nose2 coverage	
+	nose2 -v --with-coverage
+	coverage report -m
+	coverage html
+	$(BROWSER) htmlcov/index.html
