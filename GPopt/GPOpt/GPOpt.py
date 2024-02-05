@@ -7,6 +7,7 @@
 import numpy as np
 import pickle
 import shelve
+from collections import namedtuple
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.gaussian_process.kernels import Matern
@@ -30,6 +31,9 @@ class GPOpt:
 
         objective_func: a function;
             the objective function to be minimized
+        
+        params_names: a list;
+            names of the parameters of the objective function (optional)
 
         gp_obj: a GaussianProcessRegressor object;
             An ML model for estimating the uncertainty around the objective function        
@@ -80,6 +84,7 @@ class GPOpt:
         lower_bound,
         upper_bound,
         objective_func=None,
+        params_names=None,
         gp_obj=None,
         x_init=None,
         y_init=None,
@@ -655,5 +660,17 @@ class GPOpt:
         self.n_iter = iter_stop
         if self.save is not None:
             self.update_shelve()
+        
+        DescribeResult = namedtuple(
+                "DescribeResult", ("best_params", "best_score")
+            )
 
-        return (self.x_min, self.y_min)
+        if self.params_names is None:
+
+            return DescribeResult(self.x_min, self.y_min)
+
+        else:
+
+            return DescribeResult(
+                dict(zip(self.params_names, self.x_min)), self.y_min
+            )
