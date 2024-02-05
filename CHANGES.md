@@ -1,4 +1,4 @@
-# version 0.4.0
+# version 0.4.1
 
 - Allow naming of objective parameters' inputs for easier access
 - Name parameters in results

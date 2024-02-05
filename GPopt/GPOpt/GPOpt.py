@@ -107,6 +107,7 @@ class GPOpt:
         ), "'upper_bound' and 'lower_bound' must have the same dimensions"
 
         self.objective_func = objective_func
+        self.params_names = params_names
         self.lower_bound = lower_bound
         self.upper_bound = upper_bound
         self.y_init = y_init
