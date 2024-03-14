@@ -35,7 +35,7 @@ class GPOpt:
         params_names: a list;
             names of the parameters of the objective function (optional)
 
-        gp_obj: a GaussianProcessRegressor object;
+        surrogate_obj: a GaussianProcessRegressor object;
             An ML model for estimating the uncertainty around the objective function        
 
         x_init:
@@ -85,7 +85,7 @@ class GPOpt:
         upper_bound,
         objective_func=None,
         params_names=None,
-        gp_obj=None,
+        surrogate_obj=None,
         x_init=None,
         y_init=None,
         n_init=10,
@@ -96,6 +96,7 @@ class GPOpt:
         seed=123,
         save=None,
         n_jobs=1,
+        acquisition="ei",
         per_second=False,  # /!\ very experimental
         log_scale=False,  # /!\ experimental
     ):
@@ -125,10 +126,14 @@ class GPOpt:
         self.y_min = None
         self.y_mean = None
         self.y_std = None
-        self.ei = np.array([])
-        self.max_ei = []
-        if gp_obj is None:
-            self.gp_obj = GaussianProcessRegressor(
+        self.acquisition=acquisition
+        if self.acquisition=="ei":
+            self.acq = np.array([])
+        if self.acquisition=="ucb":
+            self.acq = np.array([])    
+        self.max_acq = []
+        if surrogate_obj is None:
+            self.surrogate_obj = GaussianProcessRegressor(
                 kernel=Matern(nu=2.5),
                 alpha=self.alpha,
                 normalize_y=True,
@@ -136,7 +141,7 @@ class GPOpt:
                 random_state=self.seed,
             )
         else:
-            self.gp_obj = gp_obj
+            self.surrogate_obj = surrogate_obj
 
         # Sobol seqs for initial design and choices
         sobol_seq_init = np.transpose(
@@ -262,14 +267,14 @@ class GPOpt:
         self.sh.close()
 
     # fit predict
-    def gp_fit_predict(self, X_train, y_train, X_test):
+    def surrogate_fit_predict(self, X_train, y_train, X_test):
 
         if len(X_train.shape) == 1:
             X_train = X_train.reshape((-1, 1))
             X_test = X_test.reshape((-1, 1))
 
-        # Get mean and standard deviation
-        return self.gp_obj.fit(X_train, y_train).predict(
+        # Get mean and standard deviation (+ lower and upper for not GPs)
+        return self.surrogate_obj.fit(X_train, y_train).predict(
             X_test, return_std=True
         )
 
@@ -284,20 +289,24 @@ class GPOpt:
         return self.rf_obj.fit(X_train, y_train).predict(X_test)
 
     # find next parameter by using expected improvement (ei)
-    def next_parameter_by_ei(self, seed, i):
+    def next_parameter_by_acq(self, seed, i, acq="ei"):
 
-        gamma_hat = (self.y_min - self.y_mean) / self.y_std
+        if acq == "ei":
+            gamma_hat = (self.y_min - self.y_mean) / self.y_std
 
-        self.ei = -self.y_std * (
-            gamma_hat * st.norm.cdf(gamma_hat) + st.norm.pdf(gamma_hat)
-        )
+            self.acq = -self.y_std * (
+                gamma_hat * st.norm.cdf(gamma_hat) + st.norm.pdf(gamma_hat)
+            )
+        
+        if acq=="ucb":
+            self.acq = -(self.y_mean - 1.96*self.y_std)
 
         # find max index -----
 
         if self.per_second is False:
 
             # find index for max. ei
-            max_index = self.ei.argmin()
+            max_index = self.acq.argmin()
 
         else:  # self.per_second is True
 
@@ -311,9 +320,9 @@ class GPOpt:
             )
 
             # find index for max. ei (and min. timings)
-            max_index = (-self.ei / timing_preds).argmax()
+            max_index = (-self.acq / timing_preds).argmax()
 
-        self.max_ei.append(np.abs(self.ei[max_index]))
+        self.max_acq.append(np.abs(self.acq[max_index]))
 
         # Select next choice
         next_param = self.x_choices[max_index, :]
@@ -490,7 +499,8 @@ class GPOpt:
             self.x_min = self.x_init[min_index, :]
 
             # current gp mean and std on initial design
-            y_mean, y_std = self.gp_fit_predict(
+            # /!\ if GP 
+            y_mean, y_std = self.surrogate_fit_predict(
                 np.asarray(self.parameters),
                 np.asarray(self.scores),
                 self.x_choices,
@@ -506,7 +516,7 @@ class GPOpt:
 
             assert self.n_iter > 5, "you must have n_iter > 5"
             n_iter = n_more_iter
-            iter_stop = len(self.max_ei) + n_more_iter  # potentially
+            iter_stop = len(self.max_acq) + n_more_iter  # potentially
 
         if (verbose == 1) | (verbose == 2):
             print(f"\n ...Done. \n")
@@ -536,7 +546,7 @@ class GPOpt:
         for i in range(n_iter):
 
             # find next set of parameters (vector), maximizing ei
-            next_param = self.next_parameter_by_ei(seed=len(self.max_ei), i=i)
+            next_param = self.next_parameter_by_acq(seed=len(self.max_acq), i=i)
 
             try:
 
@@ -626,7 +636,7 @@ class GPOpt:
                 if self.save is not None:
                     self.update_shelve()
 
-            self.y_mean, self.y_std = self.gp_fit_predict(
+            self.y_mean, self.y_std = self.surrogate_fit_predict(
                 np.asarray(self.parameters),
                 np.asarray(self.scores),
                 self.x_choices,
@@ -642,14 +652,14 @@ class GPOpt:
 
             if abs_tol is not None:
 
-                # if self.max_ei.size > (self.n_init + self.n_iter * min_budget_pct):
-                if len(self.max_ei) > min_budget:
+                # if self.max_acq.size > (self.n_init + self.n_iter * min_budget_pct):
+                if len(self.max_acq) > min_budget:
 
-                    diff_max_ei = np.abs(np.diff(np.asarray(self.max_ei)))
+                    diff_max_ei = np.abs(np.diff(np.asarray(self.max_acq)))
 
                     if diff_max_ei[-1] <= abs_tol:
 
-                        iter_stop = len(self.max_ei)  # index i starts at 0
+                        iter_stop = len(self.max_acq)  # index i starts at 0
 
                         break
 
