@@ -126,11 +126,8 @@ class GPOpt:
         self.y_min = None
         self.y_mean = None
         self.y_std = None
-        self.acquisition=acquisition
-        if self.acquisition=="ei":
-            self.acq = np.array([])
-        if self.acquisition=="ucb":
-            self.acq = np.array([])    
+        self.acquisition=acquisition        
+        self.acq = np.array([])        
         self.max_acq = []
         if surrogate_obj is None:
             self.surrogate_obj = GaussianProcessRegressor(
@@ -500,11 +497,18 @@ class GPOpt:
 
             # current gp mean and std on initial design
             # /!\ if GP 
-            y_mean, y_std = self.surrogate_fit_predict(
-                np.asarray(self.parameters),
-                np.asarray(self.scores),
-                self.x_choices,
-            )
+            try: 
+                y_mean, y_std = self.surrogate_fit_predict(
+                    np.asarray(self.parameters),
+                    np.asarray(self.scores),
+                    self.x_choices,
+                )
+            except: 
+                y_mean, y_std, lower, upper = self.surrogate_fit_predict(
+                    np.asarray(self.parameters),
+                    np.asarray(self.scores),
+                    self.x_choices,
+                )
             self.y_mean = y_mean
             self.y_std = np.maximum(2.220446049250313e-16, y_std)
 
@@ -636,11 +640,19 @@ class GPOpt:
                 if self.save is not None:
                     self.update_shelve()
 
-            self.y_mean, self.y_std = self.surrogate_fit_predict(
-                np.asarray(self.parameters),
-                np.asarray(self.scores),
-                self.x_choices,
-            )
+            try: 
+                self.y_mean, self.y_std = self.surrogate_fit_predict(
+                    np.asarray(self.parameters),
+                    np.asarray(self.scores),
+                    self.x_choices,
+                )
+            except:
+                self.y_mean, self.y_std, self.lower, self.upper = self.surrogate_fit_predict(
+                    np.asarray(self.parameters),
+                    np.asarray(self.scores),
+                    self.x_choices,
+                )
+
 
             if self.save is not None:
                 self.update_shelve()
