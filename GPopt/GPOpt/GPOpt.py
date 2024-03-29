@@ -530,7 +530,8 @@ class GPOpt:
                     np.asarray(self.parameters),
                     np.asarray(self.scores),
                     self.x_choices,
-                    return_std = True
+                    return_std = True,
+                    return_pi = False
                 )
             elif self.method == "mc":
                 self.posterior_ = "mc" 
@@ -539,6 +540,7 @@ class GPOpt:
                         np.asarray(self.parameters),
                         np.asarray(self.scores),
                         self.x_choices,
+                        return_std = False,
                         return_pi = True
                     )
                 except: 
