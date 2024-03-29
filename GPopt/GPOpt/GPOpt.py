@@ -284,7 +284,7 @@ class GPOpt:
         elif return_pi == True: 
             self.posterior_ = "mc" 
             res = self.surrogate_obj.fit(X_train, y_train).predict(
-                X_test, return_pi=True
+                X_test, return_pi=True, method = "splitconformal"
             )  
             self.y_sims = res.sims          
             self.y_mean, self.y_std = (np.mean(self.y_sims, axis=1), np.std(self.y_sims, axis=1))
