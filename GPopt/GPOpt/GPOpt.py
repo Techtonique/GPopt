@@ -266,19 +266,22 @@ class GPOpt:
         self.sh.close()
 
     # fit predict
-    def surrogate_fit_predict(self, X_train, y_train, X_test, **kwargs):
+    def surrogate_fit_predict(self, X_train, y_train, X_test, 
+                              return_std=False, return_pi=False):
 
         if len(X_train.shape) == 1:
             X_train = X_train.reshape((-1, 1))
             X_test = X_test.reshape((-1, 1))
 
         # Get mean and standard deviation (+ lower and upper for not GPs)
-        if return_std in kwargs: 
+        assert (return_std == True and return_pi == True) == False, \
+        "must have either return_std == True or return_pi == True"
+        if return_std == True: 
             self.posterior_ = "gaussian"
             return self.surrogate_obj.fit(X_train, y_train).predict(
                 X_test, return_std=True
             )
-        elif return_pi in kwargs: 
+        elif return_pi == True: 
             self.posterior_ = "mc" 
             res = self.surrogate_obj.fit(X_train, y_train).predict(
                 X_test, return_pi=True
