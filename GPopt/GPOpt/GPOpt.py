@@ -680,12 +680,21 @@ class GPOpt:
                     self.update_shelve()
 
             if self.posterior_ == "gaussian" and self.method == "bayesian": 
-                self.y_mean, self.y_std = self.surrogate_fit_predict(
-                    np.asarray(self.parameters),
-                    np.asarray(self.scores),
-                    self.x_choices,
-                    return_std = True
-                )
+                try: 
+                    self.y_mean, self.y_std = self.surrogate_fit_predict(
+                        np.asarray(self.parameters),
+                        np.asarray(self.scores),
+                        self.x_choices,
+                        return_std = True
+                    )
+                except:
+                     self.y_mean, self.y_std, lower, upper = self.surrogate_fit_predict(
+                        np.asarray(self.parameters),
+                        np.asarray(self.scores),
+                        self.x_choices,
+                        return_std = True
+                    )
+
             elif self.posterior_ == "mc" and self.method == "mc":
                 self.y_mean, self.y_std, self.y_sims= self.surrogate_fit_predict(
                     np.asarray(self.parameters),
