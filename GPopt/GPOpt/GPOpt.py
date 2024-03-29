@@ -302,7 +302,7 @@ class GPOpt:
         return self.rf_obj.fit(X_train, y_train).predict(X_test)
 
     # find next parameter by using expected improvement (ei)
-    def next_parameter_by_acq(self, acq="ei"):
+    def next_parameter_by_acq(self, i, acq="ei"):
 
         if acq == "ei":
             if self.posterior_ == "gaussian": 
@@ -601,7 +601,7 @@ class GPOpt:
         for i in range(n_iter):
 
             # find next set of parameters (vector), maximizing ei
-            next_param = self.next_parameter_by_acq()
+            next_param = self.next_parameter_by_acq(i=i, acq="ei")
 
             try:
 
