@@ -545,21 +545,18 @@ class GPOpt:
 
             elif self.method == "mc":
                 self.posterior_ = "mc" 
-                try: 
-                    y_mean, y_std, _ = self.surrogate_fit_predict(
-                        np.asarray(self.parameters),
-                        np.asarray(self.scores),
-                        self.x_choices,
-                        return_std = False,
-                        return_pi = True
-                    )
-                except: 
-                    assert self.surrogate_obj.__class__.__name__.startswith("CustomRegressor"),\
-                    "for `method = 'mc'`, the surrogate must be a nnetsauce.CustomRegressor()"
-                    assert self.surrogate_obj.replications is not None,\
-                    "for `method = 'mc'`, the surrogate must be a nnetsauce.CustomRegressor() with a number of 'replications' provided"
-
-
+                assert self.surrogate_obj.__class__.__name__.startswith("CustomRegressor"),\
+                "for `method = 'mc'`, the surrogate must be a nnetsauce.CustomRegressor()"
+                assert self.surrogate_obj.replications is not None,\
+                "for `method = 'mc'`, the surrogate must be a nnetsauce.CustomRegressor() with a number of 'replications' provided"
+                y_mean, y_std, _ = self.surrogate_fit_predict(
+                    np.asarray(self.parameters),
+                    np.asarray(self.scores),
+                    self.x_choices,
+                    return_std = False,
+                    return_pi = True
+                )
+                
             self.y_mean = y_mean
             self.y_std = np.maximum(2.220446049250313e-16, y_std)
 
