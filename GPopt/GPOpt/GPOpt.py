@@ -526,17 +526,27 @@ class GPOpt:
             # /!\ if GP 
             if self.method == "bayesian":
                 self.posterior_ = "gaussian" 
-                y_mean, y_std = self.surrogate_fit_predict(
-                    np.asarray(self.parameters),
-                    np.asarray(self.scores),
-                    self.x_choices,
-                    return_std = True,
-                    return_pi = False
-                )
+                try: 
+                    y_mean, y_std = self.surrogate_fit_predict(
+                        np.asarray(self.parameters),
+                        np.asarray(self.scores),
+                        self.x_choices,
+                        return_std = True,
+                        return_pi = False
+                    )
+                except:
+                    y_mean, y_std, _, _ = self.surrogate_fit_predict(
+                        np.asarray(self.parameters),
+                        np.asarray(self.scores),
+                        self.x_choices,
+                        return_std = True,
+                        return_pi = False
+                    ) 
+
             elif self.method == "mc":
                 self.posterior_ = "mc" 
                 try: 
-                    y_mean, y_std, y_sims = self.surrogate_fit_predict(
+                    y_mean, y_std, _ = self.surrogate_fit_predict(
                         np.asarray(self.parameters),
                         np.asarray(self.scores),
                         self.x_choices,
@@ -687,14 +697,16 @@ class GPOpt:
                         np.asarray(self.parameters),
                         np.asarray(self.scores),
                         self.x_choices,
-                        return_std = True
+                        return_std = True,
+                        return_pi = False
                     )
                 except:
                      self.y_mean, self.y_std, lower, upper = self.surrogate_fit_predict(
                         np.asarray(self.parameters),
                         np.asarray(self.scores),
                         self.x_choices,
-                        return_std = True
+                        return_std = True,
+                        return_pi = False
                     )
 
             elif self.posterior_ == "mc" and self.method == "mc":
@@ -702,6 +714,7 @@ class GPOpt:
                     np.asarray(self.parameters),
                     np.asarray(self.scores),
                     self.x_choices,
+                    return_std = False,
                     return_pi = True
                 )
             else: 
