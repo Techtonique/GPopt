@@ -139,6 +139,8 @@ class GPOpt:
             )
         else:
             self.surrogate_obj = surrogate_obj
+        self.method = None 
+        self.posterior_ = None
 
         # Sobol seqs for initial design and choices
         sobol_seq_init = np.transpose(
@@ -264,16 +266,27 @@ class GPOpt:
         self.sh.close()
 
     # fit predict
-    def surrogate_fit_predict(self, X_train, y_train, X_test):
+    def surrogate_fit_predict(self, X_train, y_train, X_test, **kwargs):
 
         if len(X_train.shape) == 1:
             X_train = X_train.reshape((-1, 1))
             X_test = X_test.reshape((-1, 1))
 
         # Get mean and standard deviation (+ lower and upper for not GPs)
-        return self.surrogate_obj.fit(X_train, y_train).predict(
-            X_test, return_std=True
-        )
+        if return_std in kwargs: 
+            self.posterior_ = "gaussian"
+            return self.surrogate_obj.fit(X_train, y_train).predict(
+                X_test, return_std=True
+            )
+        elif return_pi in kwargs: 
+            self.posterior_ = "mc" 
+            res = self.surrogate_obj.fit(X_train, y_train).predict(
+                X_test, return_pi=True
+            )  
+            self.y_sims = res.sims          
+            self.y_mean, self.y_std = (np.mean(self.y_sims, axis=1), np.std(self.y_sims, axis=1))
+            return self.y_mean, self.y_std, self.y_sims
+
 
     # fit predict timings
     def timings_fit_predict(self, X_train, y_train, X_test):
@@ -286,14 +299,18 @@ class GPOpt:
         return self.rf_obj.fit(X_train, y_train).predict(X_test)
 
     # find next parameter by using expected improvement (ei)
-    def next_parameter_by_acq(self, seed, i, acq="ei"):
+    def next_parameter_by_acq(self, acq="ei"):
 
         if acq == "ei":
-            gamma_hat = (self.y_min - self.y_mean) / self.y_std
-
-            self.acq = -self.y_std * (
-                gamma_hat * st.norm.cdf(gamma_hat) + st.norm.pdf(gamma_hat)
-            )
+            if self.posterior_ == "gaussian": 
+                gamma_hat = (self.y_min - self.y_mean) / self.y_std
+                self.acq = -self.y_std * (
+                    gamma_hat * st.norm.cdf(gamma_hat) + st.norm.pdf(gamma_hat)
+                )
+            elif self.posterior_ == "mc":
+                self.acq =  np.mean(np.maximum(self.y_min[:,np.newaxis] - self.y_sims, 
+                                               0), 
+                                    axis=1)
         
         if acq=="ucb":
             self.acq = -(self.y_mean - 1.96*self.y_std)
@@ -358,6 +375,7 @@ class GPOpt:
         abs_tol=None,  # suggested 1e-4, for n_iter = 200
         min_budget=50,  # minimum budget for early stopping
         func_args=None,
+        method="bayesian"
     ):
         """Launch optimization loop.
 
@@ -379,11 +397,17 @@ class GPOpt:
 
             func_args: a list;
                 additional parameters for the objective function (if necessary)
+            
+            method: an str;
+                "bayesian" (default) for Gaussian posteriors or "mc" for Monte Carlo posteriors
 
         see also [Bayesian Optimization with GPopt](https://thierrymoudiki.github.io/blog/2021/04/16/python/misc/gpopt)
         and [Hyperparameters tuning with GPopt](https://thierrymoudiki.github.io/blog/2021/06/11/python/misc/hyperparam-tuning-gpopt)
 
         """
+
+        assert method in ('bayesian', 'mc'), "method must be in ('bayesian', 'mc')"
+        self.method = method
 
         # verbose = 0: nothing is printed
         # verbose = 1: a progress bar is printed (longer than 0)
@@ -497,18 +521,30 @@ class GPOpt:
 
             # current gp mean and std on initial design
             # /!\ if GP 
-            try: 
+            if self.method == "bayesian":
+                self.posterior_ = "gaussian" 
                 y_mean, y_std = self.surrogate_fit_predict(
                     np.asarray(self.parameters),
                     np.asarray(self.scores),
                     self.x_choices,
+                    return_std = True
                 )
-            except: 
-                y_mean, y_std, lower, upper = self.surrogate_fit_predict(
-                    np.asarray(self.parameters),
-                    np.asarray(self.scores),
-                    self.x_choices,
-                )
+            elif self.method == "mc":
+                self.posterior_ = "mc" 
+                try: 
+                    y_mean, y_std, y_sims = self.surrogate_fit_predict(
+                        np.asarray(self.parameters),
+                        np.asarray(self.scores),
+                        self.x_choices,
+                        return_pi = True
+                    )
+                except: 
+                    assert self.surrogate_obj.__class__.__name__.startswith("CustomRegressor"),\
+                    "for `method = 'mc'`, the surrogate must be a nnetsauce.CustomRegressor()"
+                    assert self.surrogate_obj.replications is not None,\
+                    "for `method = 'mc'`, the surrogate must be a nnetsauce.CustomRegressor() with a number of 'replications' provided"
+
+
             self.y_mean = y_mean
             self.y_std = np.maximum(2.220446049250313e-16, y_std)
 
@@ -550,7 +586,7 @@ class GPOpt:
         for i in range(n_iter):
 
             # find next set of parameters (vector), maximizing ei
-            next_param = self.next_parameter_by_acq(seed=len(self.max_acq), i=i)
+            next_param = self.next_parameter_by_acq()
 
             try:
 
@@ -640,19 +676,22 @@ class GPOpt:
                 if self.save is not None:
                     self.update_shelve()
 
-            try: 
+            if self.posterior_ == "gaussian" and self.method == "bayesian": 
                 self.y_mean, self.y_std = self.surrogate_fit_predict(
                     np.asarray(self.parameters),
                     np.asarray(self.scores),
                     self.x_choices,
+                    return_std = True
                 )
-            except:
-                self.y_mean, self.y_std, self.lower, self.upper = self.surrogate_fit_predict(
+            elif self.posterior_ == "mc" and self.method == "mc":
+                self.y_mean, self.y_std, self.y_sims= self.surrogate_fit_predict(
                     np.asarray(self.parameters),
                     np.asarray(self.scores),
                     self.x_choices,
+                    return_pi = True
                 )
-
+            else: 
+                return NotImplementedError
 
             if self.save is not None:
                 self.update_shelve()
