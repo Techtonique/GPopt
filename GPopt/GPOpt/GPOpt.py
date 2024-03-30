@@ -311,7 +311,7 @@ class GPOpt:
                     gamma_hat * st.norm.cdf(gamma_hat) + st.norm.pdf(gamma_hat)
                 )
             elif self.posterior_ == "mc":
-                self.acq =  np.mean(np.maximum(self.y_min - self.y_sims, 0), axis=1)
+                self.acq =  -np.mean(np.maximum(self.y_min - self.y_sims, 0), axis=1)
         
         if acq=="ucb":
             self.acq = -(self.y_mean - 1.96*self.y_std)
