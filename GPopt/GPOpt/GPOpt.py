@@ -311,6 +311,8 @@ class GPOpt:
                     gamma_hat * st.norm.cdf(gamma_hat) + st.norm.pdf(gamma_hat)
                 )
             elif self.posterior_ == "mc":
+                print(f"self.y_min: {self.y_min}")
+                print(f"self.y_sims: {self.y_sims}")                
                 self.acq =  np.mean(np.maximum(self.y_min[:,np.newaxis] - self.y_sims, 
                                                0), 
                                     axis=1)
