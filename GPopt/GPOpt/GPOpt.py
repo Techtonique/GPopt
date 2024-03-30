@@ -313,9 +313,7 @@ class GPOpt:
             elif self.posterior_ == "mc":
                 print(f"self.y_min: {self.y_min}")
                 print(f"self.y_sims: {self.y_sims}")                
-                self.acq =  np.mean(np.maximum(self.y_min[:,np.newaxis] - self.y_sims, 
-                                               0), 
-                                    axis=1)
+                self.acq =  np.mean(np.maximum(self.y_min - self.y_sims, 0), axis=1)
         
         if acq=="ucb":
             self.acq = -(self.y_mean - 1.96*self.y_std)
