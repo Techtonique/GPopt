@@ -524,6 +524,8 @@ class GPOpt:
             # /!\ if GP 
             if self.method == "bayesian":
                 self.posterior_ = "gaussian" 
+                print(f"np.asarray(self.parameters){np.asarray(self.parameters)}")
+                print(f"np.asarray(self.scores){np.asarray(self.scores)}")
                 try: 
                     y_mean, y_std = self.surrogate_fit_predict(
                         np.asarray(self.parameters),
@@ -532,7 +534,7 @@ class GPOpt:
                         return_std = True,
                         return_pi = False
                     )
-                except:
+                except ValueError:
                     y_mean, y_std, _, _ = self.surrogate_fit_predict(
                         np.asarray(self.parameters),
                         np.asarray(self.scores),
