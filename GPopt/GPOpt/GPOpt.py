@@ -849,6 +849,7 @@ class GPOpt:
                 if (
                     issubclass(est[1], RegressorMixin)
                     and (est[0] not in REMOVED_REGRESSORS)
+                    and (est[0] in estimators)
                 )
             ]
         
