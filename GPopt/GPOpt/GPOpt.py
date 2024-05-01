@@ -73,6 +73,13 @@ class GPOpt:
         n_jobs: an integer;
             number of jobs for parallel computing on initial setting (can be -1)
 
+        acquisition: a string;
+            acquisition function: "ei" (expected improvement) or "ucb" (upper confidence bound)
+
+        min_value: a float;
+            minimum value of the objective function (default is None). For example, 
+            if objective function is accuracy, will be 1, and the algorithm will stop 
+
         per_second: a boolean;
             __experimental__, default is False (leave to default for now)
 
@@ -102,6 +109,7 @@ class GPOpt:
         save=None,
         n_jobs=1,
         acquisition="ei",
+        min_value=None,
         per_second=False,  # /!\ very experimental
         log_scale=False,  # /!\ experimental
     ):
@@ -132,6 +140,7 @@ class GPOpt:
         self.y_mean = None
         self.y_std = None
         self.acquisition = acquisition
+        self.min_value = min_value
         self.acq = np.array([])
         self.max_acq = []
         if surrogate_obj is None:
@@ -704,6 +713,8 @@ class GPOpt:
             if score_next_param < self.y_min:
                 self.x_min = next_param
                 self.y_min = score_next_param
+                if self.y_min == self.min_value:
+                    break
                 if self.save is not None:
                     self.update_shelve()
 
