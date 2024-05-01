@@ -573,13 +573,14 @@ class GPOpt:
                 assert (
                     self.surrogate_obj.replications is not None
                 ), "for `method = 'mc'`, the surrogate must be a nnetsauce.CustomRegressor() with a number of 'replications' provided"
-                y_mean, y_std, _ = self.surrogate_fit_predict(
+                preds_with_std = self.surrogate_fit_predict(
                     np.asarray(self.parameters),
                     np.asarray(self.scores),
                     self.x_choices,
                     return_std=False,
                     return_pi=True,
                 )
+                y_mean, y_std = preds_with_std[0], preds_with_std[1]
 
             self.y_mean = y_mean
             self.y_std = np.maximum(2.220446049250313e-16, y_std)
