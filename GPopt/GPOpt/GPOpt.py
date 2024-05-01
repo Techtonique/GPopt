@@ -859,7 +859,7 @@ class GPOpt:
        
         for i in range(len(self.regressors)):
 
-            if self.verbose == 2:
+            if verbose == 2:
                 print(f"\n using surrogate model # {i} ({self.regressors[i][0]})... \n")
 
             self.surrogate_obj = self.regressors[i][1]
