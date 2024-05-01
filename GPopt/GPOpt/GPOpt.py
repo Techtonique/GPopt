@@ -853,17 +853,21 @@ class GPOpt:
         
         self.surrogate_fit_predict = partial(self.surrogate_fit_predict, 
                                              return_pi=True, return_std=False)
+
+        self.results_ = []
        
         for i in range(len(self.regressors)):
 
             self.surrogate_obj = self.regressors[i][1]
-            self.optimize(
+            self.results_.append(self.optimize(
                 verbose=verbose,
                 n_more_iter=n_more_iter,
                 abs_tol=abs_tol,
                 min_budget=min_budget,
                 func_args=func_args,
                 method = "mc",
-            )
-
+            ))
+             
         self.surrogate_obj = None 
+
+        return self.results_
