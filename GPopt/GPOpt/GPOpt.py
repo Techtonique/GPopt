@@ -712,11 +712,11 @@ class GPOpt:
 
             if score_next_param < self.y_min:
                 self.x_min = next_param
-                self.y_min = score_next_param
-                if self.y_min == self.min_value:
-                    break
+                self.y_min = score_next_param                
                 if self.save is not None:
                     self.update_shelve()
+                if self.y_min == self.min_value:
+                    break
 
             if self.posterior_ == "gaussian" and self.method == "bayesian":
                 try:
