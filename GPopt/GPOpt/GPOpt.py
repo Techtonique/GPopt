@@ -856,23 +856,34 @@ class GPOpt:
         self.surrogate_fit_predict = partial(self.surrogate_fit_predict, 
                                              return_pi=True, return_std=False)
 
+        self.x_min = None         
+
+        self.y_min = np.inf 
+
         self.results_ = []
+
+        DescribeResult = namedtuple(
+            "DescribeResult", ("best_params", "best_score")
+        )
        
         for i in range(len(self.regressors)):
 
             if verbose == 2:
-                print(f"\n using surrogate model # {i} ({self.regressors[i][0]})... \n")
+                print(f"\n adjusting surrogate model # {i} ({self.regressors[i][0]})... \n")
 
             self.surrogate_obj = self.regressors[i][1]
-            self.results_.append(self.optimize(
+            opt_res = self.optimize(
                 verbose=verbose,
                 n_more_iter=n_more_iter,
                 abs_tol=abs_tol,
                 min_budget=min_budget,
                 func_args=func_args,
                 method = "mc",
-            ))
-             
-        self.surrogate_obj = None 
+            )
+            self.results_.append(opt_res)
+            if opt_res.best_score < self.y_min:
+                self.x_min = opt_res.best_params
+                self.y_min = opt_res.best_score             
+                self.surrogate_ = copy.deepcopy(self.surrogate_obj)
 
-        return self.results_
+        return DescribeResult(self.x_min, self.y_min)
