@@ -834,7 +834,7 @@ class GPOpt:
                 (
                     "CustomRegressor(" + est[0] + ")",
                     ns.CustomRegressor(
-                        est[1](), replications=50, type_pi="kde"
+                        est[1](), replications=250, type_pi="kde"
                     ),
                 )
                 for est in all_estimators()
