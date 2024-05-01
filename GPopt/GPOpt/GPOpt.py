@@ -4,16 +4,21 @@
 #
 # License: BSD 3 Clause Clear
 
+import nnetsauce as ns 
 import numpy as np
 import pickle
 import shelve
 from collections import namedtuple
+from functools import partial 
+from sklearn.utils.discovery import all_estimators
+from sklearn.base import RegressorMixin
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.gaussian_process.kernels import Matern
 import scipy.stats as st
 from joblib import Parallel, delayed
 from time import time
+from .config import REGRESSORS, REMOVED_REGRESSORS
 from ..utils import generate_sobol2
 from ..utils import Progbar
 
@@ -31,12 +36,12 @@ class GPOpt:
 
         objective_func: a function;
             the objective function to be minimized
-        
+
         params_names: a list;
             names of the parameters of the objective function (optional)
 
         surrogate_obj: a GaussianProcessRegressor object;
-            An ML model for estimating the uncertainty around the objective function        
+            An ML model for estimating the uncertainty around the objective function
 
         x_init:
             initial setting of points where `objective_func` is evaluated (optional)
@@ -80,7 +85,7 @@ class GPOpt:
     """
 
     def __init__(
-        self,        
+        self,
         lower_bound,
         upper_bound,
         objective_func=None,
@@ -126,8 +131,8 @@ class GPOpt:
         self.y_min = None
         self.y_mean = None
         self.y_std = None
-        self.acquisition=acquisition        
-        self.acq = np.array([])        
+        self.acquisition = acquisition
+        self.acq = np.array([])
         self.max_acq = []
         if surrogate_obj is None:
             self.surrogate_obj = GaussianProcessRegressor(
@@ -139,7 +144,7 @@ class GPOpt:
             )
         else:
             self.surrogate_obj = surrogate_obj
-        self.method = None 
+        self.method = None
         self.posterior_ = None
 
         # Sobol seqs for initial design and choices
@@ -266,30 +271,34 @@ class GPOpt:
         self.sh.close()
 
     # fit predict
-    def surrogate_fit_predict(self, X_train, y_train, X_test, 
-                              return_std=False, return_pi=False):
+    def surrogate_fit_predict(
+        self, X_train, y_train, X_test, return_std=False, return_pi=False
+    ):
 
         if len(X_train.shape) == 1:
             X_train = X_train.reshape((-1, 1))
             X_test = X_test.reshape((-1, 1))
 
         # Get mean and standard deviation (+ lower and upper for not GPs)
-        assert (return_std == True and return_pi == True) == False, \
-        "must have either return_std == True or return_pi == True"
-        if return_std == True: 
+        assert (
+            return_std == True and return_pi == True
+        ) == False, "must have either return_std == True or return_pi == True"
+        try:
             self.posterior_ = "gaussian"
             return self.surrogate_obj.fit(X_train, y_train).predict(
                 X_test, return_std=True
             )
-        elif return_pi == True: 
-            self.posterior_ = "mc" 
+        except TypeError:
+            self.posterior_ = "mc"
             res = self.surrogate_obj.fit(X_train, y_train).predict(
-                X_test, return_pi=True, method = "splitconformal"
-            )  
-            self.y_sims = res.sims          
-            self.y_mean, self.y_std = (np.mean(self.y_sims, axis=1), np.std(self.y_sims, axis=1))
+                X_test, return_pi=True, method="splitconformal"
+            )
+            self.y_sims = res.sims
+            self.y_mean, self.y_std = (
+                np.mean(self.y_sims, axis=1),
+                np.std(self.y_sims, axis=1),
+            )
             return self.y_mean, self.y_std, self.y_sims
-
 
     # fit predict timings
     def timings_fit_predict(self, X_train, y_train, X_test):
@@ -305,16 +314,18 @@ class GPOpt:
     def next_parameter_by_acq(self, i, acq="ei"):
 
         if acq == "ei":
-            if self.posterior_ == "gaussian": 
+            if self.posterior_ == "gaussian":
                 gamma_hat = (self.y_min - self.y_mean) / self.y_std
                 self.acq = -self.y_std * (
                     gamma_hat * st.norm.cdf(gamma_hat) + st.norm.pdf(gamma_hat)
                 )
             elif self.posterior_ == "mc":
-                self.acq =  -np.mean(np.maximum(self.y_min - self.y_sims, 0), axis=1)
-        
-        if acq=="ucb":
-            self.acq = -(self.y_mean - 1.96*self.y_std)
+                self.acq = -np.mean(
+                    np.maximum(self.y_min - self.y_sims, 0), axis=1
+                )
+
+        if acq == "ucb":
+            self.acq = -(self.y_mean - 1.96 * self.y_std)
 
         # find max index -----
 
@@ -376,7 +387,7 @@ class GPOpt:
         abs_tol=None,  # suggested 1e-4, for n_iter = 200
         min_budget=50,  # minimum budget for early stopping
         func_args=None,
-        method="bayesian"
+        method="bayesian",
     ):
         """Launch optimization loop.
 
@@ -398,7 +409,7 @@ class GPOpt:
 
             func_args: a list;
                 additional parameters for the objective function (if necessary)
-            
+
             method: an str;
                 "bayesian" (default) for Gaussian posteriors or "mc" for Monte Carlo posteriors
 
@@ -407,7 +418,10 @@ class GPOpt:
 
         """
 
-        assert method in ('bayesian', 'mc'), "method must be in ('bayesian', 'mc')"
+        assert method in (
+            "bayesian",
+            "mc",
+        ), "method must be in ('bayesian', 'mc')"
         self.method = method
 
         # verbose = 0: nothing is printed
@@ -521,42 +535,47 @@ class GPOpt:
             self.x_min = self.x_init[min_index, :]
 
             # current gp mean and std on initial design
-            # /!\ if GP 
+            # /!\ if GP
             if self.method == "bayesian":
-                self.posterior_ = "gaussian" 
-                print(f"np.asarray(self.parameters){np.asarray(self.parameters)}")
+                self.posterior_ = "gaussian"
+                print(
+                    f"np.asarray(self.parameters){np.asarray(self.parameters)}"
+                )
                 print(f"np.asarray(self.scores){np.asarray(self.scores)}")
-                try: 
+                try:
                     y_mean, y_std = self.surrogate_fit_predict(
                         np.asarray(self.parameters),
                         np.asarray(self.scores),
                         self.x_choices,
-                        return_std = True,
-                        return_pi = False
+                        return_std=True,
+                        return_pi=False,
                     )
                 except ValueError:
-                    y_mean, y_std, _, _ = self.surrogate_fit_predict(
+                    preds_with_std = self.surrogate_fit_predict(
                         np.asarray(self.parameters),
                         np.asarray(self.scores),
                         self.x_choices,
-                        return_std = True,
-                        return_pi = False
-                    ) 
+                        return_std=True,
+                        return_pi=False,
+                    )
+                    y_mean, y_std = preds_with_std[0], preds_with_std[1]
 
             elif self.method == "mc":
-                self.posterior_ = "mc" 
-                assert self.surrogate_obj.__class__.__name__.startswith("CustomRegressor"),\
-                "for `method = 'mc'`, the surrogate must be a nnetsauce.CustomRegressor()"
-                assert self.surrogate_obj.replications is not None,\
-                "for `method = 'mc'`, the surrogate must be a nnetsauce.CustomRegressor() with a number of 'replications' provided"
+                self.posterior_ = "mc"
+                assert self.surrogate_obj.__class__.__name__.startswith(
+                    "CustomRegressor"
+                ), "for `method = 'mc'`, the surrogate must be a nnetsauce.CustomRegressor()"
+                assert (
+                    self.surrogate_obj.replications is not None
+                ), "for `method = 'mc'`, the surrogate must be a nnetsauce.CustomRegressor() with a number of 'replications' provided"
                 y_mean, y_std, _ = self.surrogate_fit_predict(
                     np.asarray(self.parameters),
                     np.asarray(self.scores),
                     self.x_choices,
-                    return_std = False,
-                    return_pi = True
+                    return_std=False,
+                    return_pi=True,
                 )
-                
+
             self.y_mean = y_mean
             self.y_std = np.maximum(2.220446049250313e-16, y_std)
 
@@ -688,33 +707,37 @@ class GPOpt:
                 if self.save is not None:
                     self.update_shelve()
 
-            if self.posterior_ == "gaussian" and self.method == "bayesian": 
-                try: 
+            if self.posterior_ == "gaussian" and self.method == "bayesian":
+                try:
                     self.y_mean, self.y_std = self.surrogate_fit_predict(
                         np.asarray(self.parameters),
                         np.asarray(self.scores),
                         self.x_choices,
-                        return_std = True,
-                        return_pi = False
+                        return_std=True,
+                        return_pi=False,
                     )
                 except:
-                     self.y_mean, self.y_std, lower, upper = self.surrogate_fit_predict(
-                        np.asarray(self.parameters),
-                        np.asarray(self.scores),
-                        self.x_choices,
-                        return_std = True,
-                        return_pi = False
+                    self.y_mean, self.y_std, lower, upper = (
+                        self.surrogate_fit_predict(
+                            np.asarray(self.parameters),
+                            np.asarray(self.scores),
+                            self.x_choices,
+                            return_std=True,
+                            return_pi=False,
+                        )
                     )
 
             elif self.posterior_ == "mc" and self.method == "mc":
-                self.y_mean, self.y_std, self.y_sims= self.surrogate_fit_predict(
-                    np.asarray(self.parameters),
-                    np.asarray(self.scores),
-                    self.x_choices,
-                    return_std = False,
-                    return_pi = True
+                self.y_mean, self.y_std, self.y_sims = (
+                    self.surrogate_fit_predict(
+                        np.asarray(self.parameters),
+                        np.asarray(self.scores),
+                        self.x_choices,
+                        return_std=False,
+                        return_pi=True,
+                    )
                 )
-            else: 
+            else:
                 return NotImplementedError
 
             if self.save is not None:
@@ -746,10 +769,10 @@ class GPOpt:
         self.n_iter = iter_stop
         if self.save is not None:
             self.update_shelve()
-        
+
         DescribeResult = namedtuple(
-                "DescribeResult", ("best_params", "best_score")
-            )
+            "DescribeResult", ("best_params", "best_score")
+        )
 
         if self.params_names is None:
 
@@ -760,3 +783,79 @@ class GPOpt:
             return DescribeResult(
                 dict(zip(self.params_names, self.x_min)), self.y_min
             )
+
+    # optimize the objective
+    def lazyoptimize(
+        self,
+        verbose=1,
+        n_more_iter=None,
+        abs_tol=None,  # suggested 1e-4, for n_iter = 200
+        min_budget=50,  # minimum budget for early stopping
+        func_args=None,
+        estimators="all",
+    ):
+        """Launch optimization loop.
+
+        # Arguments:
+
+            verbose: an integer;
+                verbose = 0: nothing is printed,
+                verbose = 1: a progress bar is printed (longer than 0),
+                verbose = 2: information about each iteration is printed (longer than 1)
+
+            n_more_iter: an integer;
+                additional number of iterations for the optimizer (which has been run once)
+
+            abs_tol: a float;
+                tolerance for convergence of the optimizer (early stopping based on expected improvement)
+
+            min_budget: an integer (default is 50);
+                minimum number of iterations before early stopping controlled by `abs_tol`
+
+            func_args: a list;
+                additional parameters for the objective function (if necessary)
+
+            method: an str;
+                "bayesian" (default) for Gaussian posteriors or "mc" for Monte Carlo posteriors
+
+            estimators: an str or a list of strs (estimators names)
+                if "all", then 30 models are fitted. Otherwise, only those provided in the list 
+                are adjusted; for example ["RandomForestRegressor", "Ridge"]
+
+        """
+
+        if estimators == "all":
+
+            self.regressors = REGRESSORS
+
+        else:
+
+            self.regressors = [
+                (
+                    "CustomRegressor(" + est[0] + ")",
+                    ns.CustomRegressor(
+                        est[1](), replications=50, type_pi="kde"
+                    ),
+                )
+                for est in all_estimators()
+                if (
+                    issubclass(est[1], RegressorMixin)
+                    and (est[0] not in REMOVED_REGRESSORS)
+                )
+            ]
+        
+        self.surrogate_fit_predict = partial(self.surrogate_fit_predict, 
+                                             return_pi=True, return_std=False)
+       
+        for i in range(len(self.regressors)):
+
+            self.surrogate_obj = self.regressors[i][1]
+            self.optimize(
+                verbose=verbose,
+                n_more_iter=n_more_iter,
+                abs_tol=abs_tol,
+                min_budget=min_budget,
+                func_args=func_args,
+            )
+
+        self.surrogate_obj = None 
