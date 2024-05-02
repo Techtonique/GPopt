@@ -135,6 +135,7 @@ class GPOpt:
         self.n_restarts_optimizer = n_restarts_optimizer
         self.seed = seed
         self.save = save
+        self.n_jobs = n_jobs # for parallel case on initial design
         self.per_second = per_second
         self.x_min = None
         self.y_min = None
@@ -800,7 +801,6 @@ class GPOpt:
     def lazyoptimize(
         self,
         verbose=1,
-        n_more_iter=None,
         abs_tol=None,  # suggested 1e-4, for n_iter = 200
         min_budget=50,  # minimum budget for early stopping
         func_args=None,
@@ -879,36 +879,56 @@ class GPOpt:
             "DescribeResult", ("best_params", "best_score", "best_surrogate")
         )
 
-        self.optimizers_ = []
-        
+        self.optimizers_ = []        
+
         if n_jobs is None: # sequential optimization
+
             for i in range(len(self.regressors)):  
 
-            try:                       
+                try:                       
 
-                if verbose == 2:
-                    print(f"\n adjusting surrogate model # {i} ({self.regressors[i][0]})... \n")
+                    if verbose == 2:
+                        print(f"\n adjusting surrogate model # {i + 1} ({self.regressors[i][0]})... \n")
 
-                self.surrogate_obj = copy.deepcopy(self.regressors[i][1])
+                    gp_opt_obj = GPOpt(objective_func=self.objective_func, 
+                        lower_bound = self.lower_bound, 
+                        upper_bound = self.upper_bound,                 
+                        n_init=self.n_init, 
+                        n_iter=self.n_iter,
+                        alpha=self.alpha,
+                        n_restarts_optimizer=self.n_restarts_optimizer,
+                        seed=self.seed,                        
+                        n_jobs=self.n_jobs,
+                        acquisition=self.acquisition,
+                        min_value=self.min_value,
+                        surrogate_obj=copy.deepcopy(self.regressors[i][1]))  
+                    
+                    gp_opt_obj.optimize(verbose=verbose,                                
+                                abs_tol=abs_tol,  # suggested 1e-4, for n_iter = 200
+                                min_budget=min_budget,  # minimum budget for early stopping
+                                func_args=func_args,
+                                method=method,
+                                )
+                    
+                    score_next_param = gp_opt_obj.y_min                    
 
-                print(f"\n\n i: {i} --------------------")
-                print(f"\n\n self.surrogate_obj: {self.surrogate_obj}")
+                    if score_next_param < self.y_min:
+                        self.x_min = gp_opt_obj.x_min
+                        self.y_min = score_next_param  
+                        self.best_surrogate = gp_opt_obj.surrogate_obj              
+                        if self.y_min == self.min_value:
+                            break
+                    
+                    if verbose == 2:
+                        print(f"iteration {i + 1} -----")
+                        print(f"current minimum:  {self.x_min}")
+                        print(f"current minimum score:  {self.y_min}")
+                        print(f"score for next parameter: {score_next_param} \n")
 
-                # Use https://chat.openai.com/c/028c14f7-e6e4-4cb1-87cb-5b6f732d615c
-                # Use https://gemini.google.com/app/6e74011ad5401b3c
-                # Use https://www.perplexity.ai/search/can-I-instantiate-EgeeMpFtQvigIjo3MDif4A
-                # Parallelize too 
-                gpopt_obj = self.optimize(verbose=verbose,
-                            n_more_iter=n_more_iter,
-                            abs_tol=abs_tol,  # suggested 1e-4, for n_iter = 200
-                            min_budget=min_budget,  # minimum budget for early stopping
-                            func_args=func_args,
-                            method=method,
-                            )
+                except ValueError: 
 
-            except ValueError: 
+                    continue  
 
-                continue             
         elif n_jobs >= 2 or n_jobs == -1: # parallel optimization
             pass 
         else:
