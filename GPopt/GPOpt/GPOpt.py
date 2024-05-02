@@ -878,8 +878,8 @@ class GPOpt:
         )
 
         if verbose == 2:
-            print(f"\n adjusting surrogate model # {i + 1} ({self.regressors[i][0]})... \n")
-            
+            print(f"\n adjusting surrogate model # {1} ({self.regressors[0][0]})... \n")
+
         gp_opt_obj_prev = GPOpt(objective_func=self.objective_func, 
                         lower_bound = self.lower_bound, 
                         upper_bound = self.upper_bound,                 

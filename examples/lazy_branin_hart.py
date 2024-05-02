@@ -104,10 +104,8 @@ def optimize_bcn(X_train, y_train):
                     params_names=["B", "nu", "lam", "r", "tol", "col_sample", "n_clusters"],                    
                       n_init=10, n_iter=50, seed=3137)
   return gp_opt.lazyoptimize(method = "mc", verbose=2, abs_tol=1e-4, 
-                     estimators = ["RidgeCV",
-                                    "LassoCV",
-                                    "ElasticNetCV", 
-                                    "BaggingRegressor",
+                     estimators = ["BaggingRegressor",
                                     "ExtraTreesRegressor", 
                                     "RandomForestRegressor", 
+                                    "ElasticNetCV",                                     
                                     ])
