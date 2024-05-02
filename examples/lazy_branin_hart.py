@@ -9,38 +9,6 @@ from scipy.optimize import minimize
 
 print(f"\n ----- Running: {os.path.basename(__file__)}... ----- \n")
 
-# branin
-def branin(x):
-    x1 = x[0]
-    x2 = x[1]
-    term1 = (x2 - (5.1*x1**2)/(4*np.pi**2) + (5*x1)/np.pi - 6)**2
-    term2 = 10*(1-1/(8*np.pi))*np.cos(x1)    
-    return (term1 + term2 + 10)
-
-
-# [0, 1]^3
-def hart3(xx):
-    
-    alpha = np.array([1.0, 1.2, 3.0, 3.2])
-    
-    A = np.array([3.0, 10, 30, 
-                  0.1, 10, 35,
-                  3.0, 10, 30,
-                  0.1, 10, 35]).reshape(4, 3)
-            
-    P = 1e-4 * np.array([3689, 1170, 2673,
-                        4699, 4387, 7470, 
-                        1091, 8732, 5547, 
-                        381, 5743, 8828]).reshape(4, 3)
-
-    xxmat = np.tile(xx,4).reshape(4, 3)
-    
-    inner = np.sum(A*(xxmat-P)**2, axis = 1)
-    outer = np.sum(alpha * np.exp(-inner))
-
-    return(-outer)
-    
-
 # [0, 1]^6
 def hart6(xx):
     
@@ -63,21 +31,6 @@ def hart6(xx):
 
     return(-outer)
 
-
-# "True" minimum
-print("\n")
-res = minimize(branin, x0=[0, 0], method='Nelder-Mead', tol=1e-6)
-print("0 - branin minimize ----------")
-print(res.x)
-print(branin(res.x))
-
-# Fails 
-print("\n")
-res = minimize(hart3, x0=[0, 0, 0], method='Nelder-Mead', tol=1e-6)
-print("0 - hart3 minimize ----------")
-print(res.x)
-print(hart3(res.x))
-
 # "True" minimum
 print("\n")
 res = minimize(hart6, x0=[0, 0, 0, 0, 0, 0], method='Nelder-Mead', tol=1e-6)
@@ -87,45 +40,19 @@ print(hart6(res.x))
 
 
 print("---------- \n")
-print("1 - Branin more iter")
-gp_opt3 = gp.GPOpt(objective_func=branin, 
-                lower_bound = np.array([-5, 0]), 
-                 upper_bound = np.array([10, 15]),
-                 n_init=10, n_iter=10)    
-gp_opt3.lazyoptimize(verbose=1)
-print(gp_opt3.y_min)
-gp_opt3.lazyoptimize(verbose=1, n_more_iter=10)
-print(gp_opt3.y_min)
-gp_opt3.lazyoptimize(verbose=1, n_more_iter=50)
-print(gp_opt3.y_min)
-print("\n")
-
-
-# # early stopping
-
-
-print("---------- \n")
-print("2 - Hartmann 3 w/ early stopping")
-# hart3
-gp_opt3 = gp.GPOpt(objective_func=hart3, 
-                lower_bound = np.repeat(0, 3), 
-                upper_bound = np.repeat(1, 3), 
-                 n_init=20, n_iter=280)    
-gp_opt3.lazyoptimize(verbose=2, abs_tol=1e-4)
-print(gp_opt3.n_iter)
-print(gp_opt3.y_min)
-print("\n")
-
-
-
-print("---------- \n")
-print("2 - Hartmann 6 w/ early stopping")
+print("2 - Hartmann 6D")
 # hart6
 gp_opt3 = gp.GPOpt(objective_func=hart6, 
                 lower_bound = np.repeat(0, 6), 
-                upper_bound = np.repeat(1, 6), 
-                 n_init=20, n_iter=280)    
-gp_opt3.lazyoptimize(verbose=2, abs_tol=1e-4)
-print(gp_opt3.n_iter)
-print(gp_opt3.y_min)
+                upper_bound = np.repeat(1, 6),                 
+                 n_init=10, n_iter=50)    
+gp_opt3.lazyoptimize(method = "mc", verbose=2, abs_tol=1e-4, 
+                     estimators = ["RidgeCV",
+                                    "LassoCV",
+                                    "ElasticNetCV", 
+                                    "BaggingRegressor",
+                                    "ExtraTreesRegressor", 
+                                    "RandomForestRegressor", 
+                                    ])
+print(gp_opt3.best_surrogate, gp_opt3.x_min, gp_opt3.y_min)
 print("\n")

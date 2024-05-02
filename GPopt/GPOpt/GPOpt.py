@@ -4,6 +4,7 @@
 #
 # License: BSD 3 Clause Clear
 
+import copy
 import nnetsauce as ns 
 import numpy as np
 import pickle
@@ -139,6 +140,7 @@ class GPOpt:
         self.y_min = None
         self.y_mean = None
         self.y_std = None
+        self.best_surrogate = None 
         self.acquisition = acquisition
         self.min_value = min_value
         self.acq = np.array([])
@@ -292,12 +294,12 @@ class GPOpt:
         assert (
             return_std == True and return_pi == True
         ) == False, "must have either return_std == True or return_pi == True"
-        try:
+        if return_std == True:
             self.posterior_ = "gaussian"
             return self.surrogate_obj.fit(X_train, y_train).predict(
                 X_test, return_std=True
             )
-        except TypeError:
+        elif return_pi == True:
             self.posterior_ = "mc"
             res = self.surrogate_obj.fit(X_train, y_train).predict(
                 X_test, return_pi=True, method="splitconformal"
@@ -308,6 +310,8 @@ class GPOpt:
                 np.std(self.y_sims, axis=1),
             )
             return self.y_mean, self.y_std, self.y_sims
+        else:
+            raise NotImplementedError
 
     # fit predict timings
     def timings_fit_predict(self, X_train, y_train, X_test):
@@ -528,7 +532,7 @@ class GPOpt:
                     if self.save is not None:
                         self.update_shelve()
 
-            else:  # if self.y_init is None:
+            else:  # if self.y_init is not None:
 
                 assert self.x_init.shape[0] == len(
                     self.y_init
@@ -555,7 +559,7 @@ class GPOpt:
                         return_std=True,
                         return_pi=False,
                     )
-                except ValueError:
+                except ValueError: # do not remove this
                     preds_with_std = self.surrogate_fit_predict(
                         np.asarray(self.parameters),
                         np.asarray(self.scores),
@@ -800,6 +804,7 @@ class GPOpt:
         abs_tol=None,  # suggested 1e-4, for n_iter = 200
         min_budget=50,  # minimum budget for early stopping
         func_args=None,
+        method="bayesian",  # "bayesian" or "mc
         estimators="all",
     ):
         """Launch optimization loop.
@@ -853,37 +858,50 @@ class GPOpt:
                 )
             ]
         
+        print(f"self.regressors: {self.regressors}")
+        
         self.surrogate_fit_predict = partial(self.surrogate_fit_predict, 
-                                             return_pi=True, return_std=False)
+                                             return_pi=True)
 
         self.x_min = None         
 
-        self.y_min = np.inf 
+        self.y_min = np.inf  
 
-        self.results_ = []
+        score_next_param = np.inf       
+
+        print(f"self: {self}")
 
         DescribeResult = namedtuple(
-            "DescribeResult", ("best_params", "best_score")
+            "DescribeResult", ("best_params", "best_score", "best_surrogate")
         )
-       
-        for i in range(len(self.regressors)):
 
-            if verbose == 2:
-                print(f"\n adjusting surrogate model # {i} ({self.regressors[i][0]})... \n")
+        self.optimizers_ = []
 
-            self.surrogate_obj = self.regressors[i][1]
-            opt_res = self.optimize(
-                verbose=verbose,
-                n_more_iter=n_more_iter,
-                abs_tol=abs_tol,
-                min_budget=min_budget,
-                func_args=func_args,
-                method = "mc",
-            )
-            self.results_.append(opt_res)
-            if opt_res.best_score < self.y_min:
-                self.x_min = opt_res.best_params
-                self.y_min = opt_res.best_score             
-                self.surrogate_ = copy.deepcopy(self.surrogate_obj)
+        for i in range(len(self.regressors)):  
 
-        return DescribeResult(self.x_min, self.y_min)
+            try:                       
+
+                if verbose == 2:
+                    print(f"\n adjusting surrogate model # {i} ({self.regressors[i][0]})... \n")
+
+                self.surrogate_obj = copy.deepcopy(self.regressors[i][1])
+
+                print(f"\n\n i: {i} --------------------")
+                print(f"\n\n self.surrogate_obj: {self.surrogate_obj}")
+
+                # Use https://chat.openai.com/c/028c14f7-e6e4-4cb1-87cb-5b6f732d615c
+                # Use https://gemini.google.com/app/6e74011ad5401b3c
+                # Use https://www.perplexity.ai/search/can-I-instantiate-EgeeMpFtQvigIjo3MDif4A
+                gpopt_obj = self.optimize(verbose=verbose,
+                            n_more_iter=n_more_iter,
+                            abs_tol=abs_tol,  # suggested 1e-4, for n_iter = 200
+                            min_budget=min_budget,  # minimum budget for early stopping
+                            func_args=func_args,
+                            method=method,
+                            )
+
+            except ValueError: 
+
+                continue             
+
+        return DescribeResult(self.x_min, self.y_min, self.best_surrogate)        
