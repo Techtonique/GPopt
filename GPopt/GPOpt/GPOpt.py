@@ -459,7 +459,7 @@ class GPOpt:
 
             if verbose == 1:
                 progbar = Progbar(target=self.n_init)
-
+            
             self.parameters = self.x_init.tolist()
             self.scores = []
 
@@ -862,8 +862,6 @@ class GPOpt:
                 )
             ]
         
-        print(f"self.regressors: {self.regressors}")
-        
         self.surrogate_fit_predict = partial(self.surrogate_fit_predict, 
                                              return_pi=True)
 
@@ -879,7 +877,30 @@ class GPOpt:
             "DescribeResult", ("best_params", "best_score", "best_surrogate")
         )
 
-        self.optimizers_ = []        
+        if verbose == 2:
+            print(f"\n adjusting surrogate model # {i + 1} ({self.regressors[i][0]})... \n")
+            
+        gp_opt_obj_prev = GPOpt(objective_func=self.objective_func, 
+                        lower_bound = self.lower_bound, 
+                        upper_bound = self.upper_bound,                 
+                        n_init=self.n_init, 
+                        n_iter=self.n_iter,
+                        alpha=self.alpha,
+                        n_restarts_optimizer=self.n_restarts_optimizer,
+                        seed=self.seed,                        
+                        n_jobs=self.n_jobs,
+                        acquisition=self.acquisition,
+                        min_value=self.min_value,
+                        surrogate_obj=copy.deepcopy(self.regressors[0][1]))  
+                    
+        gp_opt_obj_prev.optimize(verbose=verbose,                                
+                                abs_tol=abs_tol,  # suggested 1e-4, for n_iter = 200
+                                min_budget=min_budget,  # minimum budget for early stopping
+                                func_args=func_args,
+                                method=method,
+                                )
+                    
+        score_next_param = gp_opt_obj_prev.y_min        
 
         if n_jobs is None: # sequential optimization
 
@@ -901,7 +922,9 @@ class GPOpt:
                         n_jobs=self.n_jobs,
                         acquisition=self.acquisition,
                         min_value=self.min_value,
-                        surrogate_obj=copy.deepcopy(self.regressors[i][1]))  
+                        surrogate_obj=copy.deepcopy(self.regressors[i][1]),
+                        x_init = np.asarray(gp_opt_obj_prev.parameters),
+                        y_init = np.asarray(gp_opt_obj_prev.scores))
                     
                     gp_opt_obj.optimize(verbose=verbose,                                
                                 abs_tol=abs_tol,  # suggested 1e-4, for n_iter = 200
@@ -920,10 +943,12 @@ class GPOpt:
                             break
                     
                     if verbose == 2:
-                        print(f"iteration {i + 1} -----")
+                        print(f"Global iteration #{i + 1} -----")
                         print(f"current minimum:  {self.x_min}")
                         print(f"current minimum score:  {self.y_min}")
                         print(f"score for next parameter: {score_next_param} \n")
+
+                    gp_opt_obj_prev = copy.deepcopy(gp_opt_obj)
 
                 except ValueError: 
 
