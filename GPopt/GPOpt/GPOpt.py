@@ -806,6 +806,7 @@ class GPOpt:
         func_args=None,
         method="bayesian",  # "bayesian" or "mc
         estimators="all",
+        n_jobs=None,
     ):
         """Launch optimization loop.
 
@@ -834,6 +835,9 @@ class GPOpt:
             estimators: an str or a list of strs (estimators names)
                 if "all", then 30 models are fitted. Otherwise, only those provided in the list 
                 are adjusted; for example ["RandomForestRegressor", "Ridge"]
+            
+            n_jobs: an integer;
+                number of jobs for parallel computing on initial setting (can be -1 for all cores)
 
         """
 
@@ -876,8 +880,9 @@ class GPOpt:
         )
 
         self.optimizers_ = []
-
-        for i in range(len(self.regressors)):  
+        
+        if n_jobs is None: # sequential optimization
+            for i in range(len(self.regressors)):  
 
             try:                       
 
@@ -892,6 +897,7 @@ class GPOpt:
                 # Use https://chat.openai.com/c/028c14f7-e6e4-4cb1-87cb-5b6f732d615c
                 # Use https://gemini.google.com/app/6e74011ad5401b3c
                 # Use https://www.perplexity.ai/search/can-I-instantiate-EgeeMpFtQvigIjo3MDif4A
+                # Parallelize too 
                 gpopt_obj = self.optimize(verbose=verbose,
                             n_more_iter=n_more_iter,
                             abs_tol=abs_tol,  # suggested 1e-4, for n_iter = 200
@@ -903,5 +909,8 @@ class GPOpt:
             except ValueError: 
 
                 continue             
-
+        elif n_jobs >= 2 or n_jobs == -1: # parallel optimization
+            pass 
+        else:
+            raise ValueError("n_jobs must be either None or >= 2 or equal to -1")
         return DescribeResult(self.x_min, self.y_min, self.best_surrogate)        
