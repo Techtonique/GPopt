@@ -877,7 +877,7 @@ class GPOpt:
             score_next_param = np.inf       
 
             DescribeResult = namedtuple(
-                "DescribeResult", ("best_params", "best_score", "best_surrogate")
+                "DescribeResult", ("best_params", "best_score")
             )
 
             if verbose == 2:
