@@ -47,7 +47,7 @@ print("2 - Hartmann 6D")
 gp_opt3 = gp.GPOpt(objective_func=hart6, 
                 lower_bound = np.repeat(0, 6), 
                 upper_bound = np.repeat(1, 6),                 
-                 n_init=10, n_iter=140)    
+                 n_init=10, n_iter=50)    
 gp_opt3.lazyoptimize(method = "mc", verbose=2, abs_tol=1e-4, 
                      estimators = ["RidgeCV",
                                     "LassoCV",
