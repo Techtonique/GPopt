@@ -44,17 +44,46 @@ print(hart6(res.x))
 print("---------- \n")
 print("2 - Hartmann 6D")
 # hart6
-gp_opt3 = gp.GPOpt(objective_func=hart6, 
+gp_opt1 = gp.GPOpt(objective_func=hart6, 
                 lower_bound = np.repeat(0, 6), 
                 upper_bound = np.repeat(1, 6),                 
-                 n_init=10, n_iter=50)    
-gp_opt3.lazyoptimize(method = "mc", verbose=2, abs_tol=1e-4, 
-                     estimators = ["RidgeCV",
+                 n_init=10, n_iter=90)    
+
+
+print("\n 2 - 1 type_exec = 'independent'")
+gp_opt1.lazyoptimize(method = "mc", verbose=2, abs_tol=1e-4, 
+                     type_exec = "independent",
+                     estimators = ["LinearRegression",
+                                    "RidgeCV",
                                     "LassoCV",
                                     "ElasticNetCV", 
+                                    "KNeighborsRegressor",
                                     "BaggingRegressor",
                                     "ExtraTreesRegressor", 
                                     "RandomForestRegressor", 
-                                    ])
-print(gp_opt3.best_surrogate, gp_opt3.x_min, gp_opt3.y_min)
+                                    ]
+                                    )
+print(gp_opt1.best_surrogate, gp_opt1.x_min, gp_opt1.y_min)
+print("\n")
+
+print("\n 2 - 2 type_exec = 'queue'")
+
+gp_opt2 = gp.GPOpt(objective_func=hart6, 
+                lower_bound = np.repeat(0, 6), 
+                upper_bound = np.repeat(1, 6),                 
+                 n_init=10, n_iter=90)    
+
+gp_opt2.lazyoptimize(method = "mc", verbose=2, abs_tol=1e-4, 
+                     type_exec = "queue",
+                     estimators = ["LinearRegression",
+                                    "RidgeCV",
+                                    "LassoCV",
+                                    "ElasticNetCV",
+                                    "KNeighborsRegressor", 
+                                    "BaggingRegressor",
+                                    "ExtraTreesRegressor", 
+                                    "RandomForestRegressor", 
+                                    ]
+                                    )
+print(gp_opt2.x_min, gp_opt2.y_min)
 print("\n")
