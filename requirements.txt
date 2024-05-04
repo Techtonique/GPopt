@@ -6,3 +6,4 @@ pandas
 scipy
 scikit-learn
 threadpoolctl
+tqdm

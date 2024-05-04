@@ -5,12 +5,12 @@
 # License: BSD 3 Clause Clear
 
 import copy
-import nnetsauce as ns 
+import nnetsauce as ns
 import numpy as np
 import pickle
 import shelve
 from collections import namedtuple
-from functools import partial 
+from functools import partial
 from sklearn.utils.discovery import all_estimators
 from sklearn.base import RegressorMixin
 from sklearn.gaussian_process import GaussianProcessRegressor
@@ -19,6 +19,7 @@ from sklearn.gaussian_process.kernels import Matern
 import scipy.stats as st
 from joblib import Parallel, delayed
 from time import time
+from tqdm import tqdm
 from .config import REGRESSORS, REMOVED_REGRESSORS
 from ..utils import generate_sobol2
 from ..utils import Progbar
@@ -78,8 +79,8 @@ class GPOpt:
             acquisition function: "ei" (expected improvement) or "ucb" (upper confidence bound)
 
         min_value: a float;
-            minimum value of the objective function (default is None). For example, 
-            if objective function is accuracy, will be 1, and the algorithm will stop 
+            minimum value of the objective function (default is None). For example,
+            if objective function is accuracy, will be 1, and the algorithm will stop
 
         per_second: a boolean;
             __experimental__, default is False (leave to default for now)
@@ -135,13 +136,13 @@ class GPOpt:
         self.n_restarts_optimizer = n_restarts_optimizer
         self.seed = seed
         self.save = save
-        self.n_jobs = n_jobs # for parallel case on initial design
+        self.n_jobs = n_jobs  # for parallel case on initial design
         self.per_second = per_second
         self.x_min = None
         self.y_min = None
         self.y_mean = None
         self.y_std = None
-        self.best_surrogate = None 
+        self.best_surrogate = None
         self.acquisition = acquisition
         self.min_value = min_value
         self.acq = np.array([])
@@ -459,7 +460,7 @@ class GPOpt:
 
             if verbose == 1:
                 progbar = Progbar(target=self.n_init)
-            
+
             self.parameters = self.x_init.tolist()
             self.scores = []
 
@@ -560,7 +561,7 @@ class GPOpt:
                         return_std=True,
                         return_pi=False,
                     )
-                except ValueError: # do not remove this
+                except ValueError:  # do not remove this
                     preds_with_std = self.surrogate_fit_predict(
                         np.asarray(self.parameters),
                         np.asarray(self.scores),
@@ -714,7 +715,7 @@ class GPOpt:
 
             if score_next_param < self.y_min:
                 self.x_min = next_param
-                self.y_min = score_next_param                
+                self.y_min = score_next_param
                 if self.save is not None:
                     self.update_shelve()
                 if self.y_min == self.min_value:
@@ -806,7 +807,7 @@ class GPOpt:
         func_args=None,
         method="bayesian",  # "bayesian" or "mc
         estimators="all",
-        type_exec="queue", # "queue" or "independent"
+        type_exec="independent",  # "queue" or "independent" (default)
     ):
         """Launch optimization loop.
 
@@ -833,14 +834,14 @@ class GPOpt:
                 "bayesian" (default) for Gaussian posteriors or "mc" for Monte Carlo posteriors
 
             estimators: an str or a list of strs (estimators names)
-                if "all", then 30 models are fitted. Otherwise, only those provided in the list 
+                if "all", then 30 models are fitted. Otherwise, only those provided in the list
                 are adjusted; for example ["RandomForestRegressor", "Ridge"]
-            
+
             type_exec: an str;
-                "queue" (default) is when surrogate models are adjusted one after the 
-                other, on a design set with increasing size; "independent" is when models are 
-                adjusted independently on the same design set and the best model is chosen 
-                eventually
+                "independent" (default) is when surrogate models are adjusted independently on
+                the same design set and the best model is chosen eventually; "queue" is when
+                surrogate models are adjusted one after the other, on a design set with
+                increasing size;
 
         """
 
@@ -864,174 +865,271 @@ class GPOpt:
                     and (est[0] in estimators)
                 )
             ]
-        
-        self.surrogate_fit_predict = partial(self.surrogate_fit_predict, 
-                                             return_pi=True)
-        
-        if type_exec == "queue": # when models are adjusted one after the other on a design set with increasing size
 
-            self.x_min = None         
+        self.surrogate_fit_predict = partial(
+            self.surrogate_fit_predict, return_pi=True
+        )
 
-            self.y_min = np.inf  
+        if (
+            type_exec == "queue"
+        ):  # when models are adjusted one after the other on a design set with increasing size
 
-            score_next_param = np.inf       
+            self.x_min = None
+
+            self.y_min = np.inf
+
+            score_next_param = np.inf
 
             DescribeResult = namedtuple(
                 "DescribeResult", ("best_params", "best_score")
             )
 
             if verbose == 2:
-                print(f"\n adjusting surrogate model # {1} ({self.regressors[0][0]})... \n")
+                print(
+                    f"\n adjusting surrogate model # {1} ({self.regressors[0][0]})... \n"
+                )
 
-            gp_opt_obj_prev = GPOpt(objective_func=self.objective_func, 
-                            lower_bound = self.lower_bound, 
-                            upper_bound = self.upper_bound,                 
-                            n_init=self.n_init, 
-                            n_iter=self.n_iter,
-                            alpha=self.alpha,
-                            n_restarts_optimizer=self.n_restarts_optimizer,
-                            seed=self.seed,                        
-                            n_jobs=self.n_jobs,
-                            acquisition=self.acquisition,
-                            min_value=self.min_value,
-                            surrogate_obj=copy.deepcopy(self.regressors[0][1]))  
-                        
-            gp_opt_obj_prev.optimize(verbose=verbose,                                
-                                    abs_tol=abs_tol,  # suggested 1e-4, for n_iter = 200
-                                    min_budget=min_budget,  # minimum budget for early stopping
-                                    func_args=func_args,
-                                    method=method,
-                                    )
-                        
-            score_next_param = gp_opt_obj_prev.y_min        
+            gp_opt_obj_prev = GPOpt(
+                objective_func=self.objective_func,
+                lower_bound=self.lower_bound,
+                upper_bound=self.upper_bound,
+                n_init=self.n_init,
+                n_iter=self.n_iter,
+                alpha=self.alpha,
+                n_restarts_optimizer=self.n_restarts_optimizer,
+                seed=self.seed,
+                n_jobs=self.n_jobs,
+                acquisition=self.acquisition,
+                min_value=self.min_value,
+                surrogate_obj=copy.deepcopy(self.regressors[0][1]),
+            )
 
-            if self.n_jobs is None: # sequential optimization
+            gp_opt_obj_prev.optimize(
+                verbose=verbose,
+                abs_tol=abs_tol,  # suggested 1e-4, for n_iter = 200
+                min_budget=min_budget,  # minimum budget for early stopping
+                func_args=func_args,
+                method=method,
+            )
 
-                for i in range(len(self.regressors)):  
+            score_next_param = gp_opt_obj_prev.y_min
 
-                    try:                       
+            if self.n_jobs is None:  # sequential optimization
+
+                for i in range(len(self.regressors)):
+
+                    try:
 
                         if verbose == 2:
-                            print(f"\n adjusting surrogate model # {i + 1} ({self.regressors[i][0]})... \n")
+                            print(
+                                f"\n adjusting surrogate model # {i + 1} ({self.regressors[i][0]})... \n"
+                            )
 
-                        gp_opt_obj = GPOpt(objective_func=self.objective_func, 
-                            lower_bound = self.lower_bound, 
-                            upper_bound = self.upper_bound,                 
-                            n_init=self.n_init, 
+                        gp_opt_obj = GPOpt(
+                            objective_func=self.objective_func,
+                            lower_bound=self.lower_bound,
+                            upper_bound=self.upper_bound,
+                            n_init=self.n_init,
                             n_iter=self.n_iter,
                             alpha=self.alpha,
                             n_restarts_optimizer=self.n_restarts_optimizer,
-                            seed=self.seed,                        
+                            seed=self.seed,
                             n_jobs=self.n_jobs,
                             acquisition=self.acquisition,
                             min_value=self.min_value,
                             surrogate_obj=copy.deepcopy(self.regressors[i][1]),
-                            x_init = np.asarray(gp_opt_obj_prev.parameters),
-                            y_init = np.asarray(gp_opt_obj_prev.scores))
-                        
-                        gp_opt_obj.optimize(verbose=verbose,                                
-                                    abs_tol=abs_tol,  # suggested 1e-4, for n_iter = 200
-                                    min_budget=min_budget,  # minimum budget for early stopping
-                                    func_args=func_args,
-                                    method=method,
-                                    )
-                        
-                        score_next_param = gp_opt_obj.y_min                    
+                            x_init=np.asarray(gp_opt_obj_prev.parameters),
+                            y_init=np.asarray(gp_opt_obj_prev.scores),
+                        )
+
+                        gp_opt_obj.optimize(
+                            verbose=verbose,
+                            abs_tol=abs_tol,  # suggested 1e-4, for n_iter = 200
+                            min_budget=min_budget,  # minimum budget for early stopping
+                            func_args=func_args,
+                            method=method,
+                        )
+
+                        score_next_param = gp_opt_obj.y_min
 
                         if score_next_param < self.y_min:
                             self.x_min = gp_opt_obj.x_min
-                            self.y_min = score_next_param                              
+                            self.y_min = score_next_param
                             if self.y_min == self.min_value:
                                 break
-                        
+
                         if verbose == 2:
                             print(f"Global iteration #{i + 1} -----")
                             print(f"current minimum:  {self.x_min}")
                             print(f"current minimum score:  {self.y_min}")
-                            print(f"score for next parameter: {score_next_param} \n")
+                            print(
+                                f"score for next parameter: {score_next_param} \n"
+                            )
 
                         gp_opt_obj_prev = copy.deepcopy(gp_opt_obj)
 
-                    except ValueError: 
+                    except ValueError:
 
-                        continue  
+                        continue
 
-            elif self.n_jobs >= 2 or self.n_jobs == -1: # parallel optimization
-                pass 
+            elif self.n_jobs >= 2 or self.n_jobs == -1:  # parallel optimization
+                pass
             else:
-                raise ValueError("n_jobs must be either None or >= 2 or equal to -1")
-            return DescribeResult(self.x_min, self.y_min)        
-        
-        elif type_exec == "independent": # when models are adjusted independently on the same design set and the best model is chosen eventually
+                raise ValueError(
+                    "n_jobs must be either None or >= 2 or equal to -1"
+                )
+            return DescribeResult(self.x_min, self.y_min)
 
-            self.x_min = None         
+        elif (
+            type_exec == "independent"
+        ):  # when models are adjusted independently on the same design set and the best model is chosen eventually
 
-            self.y_min = np.inf  
+            self.x_min = None
 
-            score_next_param = np.inf       
+            self.y_min = np.inf
+
+            score_next_param = np.inf
 
             DescribeResult = namedtuple(
-                "DescribeResult", ("best_params", "best_score", "best_surrogate")
+                "DescribeResult",
+                ("best_params", "best_score", "best_surrogate"),
             )
 
             if verbose == 2:
-                print(f"\n adjusting surrogate model # {1} ({self.regressors[0][0]})... \n")
+                print(
+                    f"\n adjusting surrogate model # {1} ({self.regressors[0][0]})... \n"
+                )
 
-            if self.n_jobs is None: # sequential optimization
+            if self.n_jobs is None:  # sequential optimization
 
-                for i in range(len(self.regressors)):  
+                for i in range(len(self.regressors)):
 
-                    try:                       
+                    try:
 
                         if verbose == 2:
-                            print(f"\n adjusting surrogate model # {i + 1} ({self.regressors[i][0]})... \n")
+                            print(
+                                f"\n adjusting surrogate model # {i + 1} ({self.regressors[i][0]})... \n"
+                            )
 
-                        gp_opt_obj = GPOpt(objective_func=self.objective_func, 
-                            lower_bound = self.lower_bound, 
-                            upper_bound = self.upper_bound,                 
-                            n_init=self.n_init, 
+                        gp_opt_obj = GPOpt(
+                            objective_func=self.objective_func,
+                            lower_bound=self.lower_bound,
+                            upper_bound=self.upper_bound,
+                            n_init=self.n_init,
                             n_iter=self.n_iter,
                             alpha=self.alpha,
                             n_restarts_optimizer=self.n_restarts_optimizer,
-                            seed=self.seed,                        
+                            seed=self.seed,
                             n_jobs=self.n_jobs,
                             acquisition=self.acquisition,
                             min_value=self.min_value,
-                            surrogate_obj=copy.deepcopy(self.regressors[i][1]))
-                        
-                        gp_opt_obj.optimize(verbose=verbose,                                
-                                    abs_tol=abs_tol,  # suggested 1e-4, for n_iter = 200
-                                    min_budget=min_budget,  # minimum budget for early stopping
-                                    func_args=func_args,
-                                    method=method,
-                                    )
-                        
-                        score_next_param = gp_opt_obj.y_min                    
+                            surrogate_obj=copy.deepcopy(self.regressors[i][1]),
+                        )
+
+                        gp_opt_obj.optimize(
+                            verbose=verbose,
+                            abs_tol=abs_tol,  # suggested 1e-4, for n_iter = 200
+                            min_budget=min_budget,  # minimum budget for early stopping
+                            func_args=func_args,
+                            method=method,
+                        )
+
+                        score_next_param = gp_opt_obj.y_min
 
                         if score_next_param < self.y_min:
                             self.x_min = gp_opt_obj.x_min
-                            self.y_min = score_next_param  
-                            self.best_surrogate = copy.deepcopy(gp_opt_obj.surrogate_obj)             
+                            self.y_min = score_next_param
+                            self.best_surrogate = copy.deepcopy(
+                                gp_opt_obj.surrogate_obj
+                            )
                             if self.y_min == self.min_value:
                                 break
-                        
+
                         if verbose == 2:
                             print(f"Global iteration #{i + 1} -----")
                             print(f"current minimum:  {self.x_min}")
                             print(f"current minimum score:  {self.y_min}")
-                            print(f"score for next parameter: {score_next_param} \n")
+                            print(
+                                f"score for next parameter: {score_next_param} \n"
+                            )
 
-                    except ValueError: 
+                    except ValueError:
 
-                        continue  
+                        continue
 
-            elif self.n_jobs >= 2 or self.n_jobs == -1: # parallel optimization
-                pass 
+            elif self.n_jobs >= 2 or self.n_jobs == -1:  # parallel optimization
+
+                def foo(i):
+
+                    gp_opt_obj = GPOpt(
+                        objective_func=self.objective_func,
+                        lower_bound=self.lower_bound,
+                        upper_bound=self.upper_bound,
+                        n_init=self.n_init,
+                        n_iter=self.n_iter,
+                        alpha=self.alpha,
+                        n_restarts_optimizer=self.n_restarts_optimizer,
+                        seed=self.seed,
+                        n_jobs=self.n_jobs,
+                        acquisition=self.acquisition,
+                        min_value=self.min_value,
+                        surrogate_obj=copy.deepcopy(self.regressors[i][1]),
+                    )
+
+                    try:
+                        gp_opt_obj.optimize(
+                            verbose=0,  # important
+                            abs_tol=abs_tol,  # suggested 1e-4, for n_iter = 200
+                            min_budget=min_budget,  # minimum budget for early stopping
+                            func_args=func_args,
+                            method=method,
+                        )
+
+                        return gp_opt_obj
+                    except ValueError:
+                        return None
+
+                tmp_results = Parallel(n_jobs=self.n_jobs)(
+                    delayed(foo)(i) for i in tqdm(range(len(self.regressors)))
+                )
+
+                for i in tqdm(range(len(tmp_results))):
+
+                    if tmp_results[i] is not None:
+
+                        gp_opt_obj = copy.deepcopy(tmp_results[i])
+
+                        score_next_param = gp_opt_obj.y_min
+
+                        if score_next_param < self.y_min:
+                            self.x_min = gp_opt_obj.x_min
+                            self.y_min = score_next_param
+                            self.best_surrogate = copy.deepcopy(
+                                gp_opt_obj.surrogate_obj
+                            )
+                            if self.y_min == self.min_value:
+                                break
+
+                        if verbose == 2:
+                            print(f"Global iteration #{i + 1} -----")
+                            print(f"current minimum:  {self.x_min}")
+                            print(f"current minimum score:  {self.y_min}")
+                            print(
+                                f"score for next parameter: {score_next_param} \n"
+                            )
+
+                    else:
+
+                        continue
+
             else:
-                raise ValueError("n_jobs must be either None or >= 2 or equal to -1")
-            return DescribeResult(self.x_min, self.y_min, self.best_surrogate)        
-
+                raise ValueError(
+                    "n_jobs must be either None or >= 2 or equal to -1"
+                )
+            return DescribeResult(self.x_min, self.y_min, self.best_surrogate)
 
         else:
 
-            NotImplementedError("type_exec must be either 'queue' or 'independent'")
+            NotImplementedError(
+                "type_exec must be either 'queue' or 'independent'"
+            )

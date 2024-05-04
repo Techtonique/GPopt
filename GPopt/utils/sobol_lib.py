@@ -14698,7 +14698,7 @@ def i4_sobol(dim_num, seed):
             16375,
             16381,
         ]
-        atmost = 2 ** log_max - 1
+        atmost = 2**log_max - 1
         #
         # 	Find the number of bits in ATMOST.
         #
