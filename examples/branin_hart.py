@@ -93,13 +93,13 @@ gp_opt3 = gp.GPOpt(objective_func=branin,
                  upper_bound = np.array([10, 15]),
                  n_init=10, n_iter=10)    
 gp_opt3.optimize(verbose=1)
-plt.plot(np.diff(gp_opt3.max_ei))
+#plt.plot(np.diff(gp_opt3.max_ei))
 print(gp_opt3.y_min)
 gp_opt3.optimize(verbose=1, n_more_iter=10)
 print(gp_opt3.y_min)
-plt.plot(np.diff(gp_opt3.max_ei))
+#plt.plot(np.diff(gp_opt3.max_ei))
 gp_opt3.optimize(verbose=1, n_more_iter=50)
-plt.plot(np.diff(gp_opt3.max_ei))
+#plt.plot(np.diff(gp_opt3.max_ei))
 print(gp_opt3.y_min)
 print("\n")
 

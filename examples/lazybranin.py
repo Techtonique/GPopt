@@ -53,4 +53,4 @@ gp_opt1 = gp.GPOpt(x_init = X_init,
                    n_iter=190,                    
                    seed=4327)
 
-gp_opt1.lazyoptimize(verbose=2, abs_tol=1e-4)
+gp_opt1.lazyoptimize(method = "mc", verbose=2, abs_tol=1e-4)

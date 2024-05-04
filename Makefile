@@ -55,14 +55,14 @@ coverage: ## check code coverage quickly with the default Python
 
 docs: install ## generate docs		
 	pip install black pdoc 
-	black GPopt/GPOpt/* --line-length=80	
-	pdoc -t docs GPopt/GPOpt/* --output-dir gpopt-docs
+	black GPopt/* --line-length=80	
+	pdoc -t docs GPopt/* --output-dir gpopt-docs
 	find . -name '__pycache__' -exec rm -fr {} +
 
 servedocs: install ## compile the docs watching for change	 	
 	pip install black pdoc 
-	black GPopt/GPOpt/* --line-length=80
-	pdoc -t docs GPopt/GPOpt/* 
+	black GPopt/* --line-length=80
+	pdoc -t docs GPopt/* 
 	find . -name '__pycache__' -exec rm -fr {} +
 
 release: dist ## package and upload a release
