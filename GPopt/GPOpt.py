@@ -807,6 +807,7 @@ class GPOpt:
         func_args=None,
         method="bayesian",  # "bayesian" or "mc
         estimators="all",
+        type_pi="kde", # for now, 'kde' or 'bootstrap'
         type_exec="independent",  # "queue" or "independent" (default)
     ):
         """Launch optimization loop.
@@ -836,6 +837,10 @@ class GPOpt:
             estimators: an str or a list of strs (estimators names)
                 if "all", then 30 models are fitted. Otherwise, only those provided in the list
                 are adjusted; for example ["RandomForestRegressor", "Ridge"]
+            
+            type_pi: an str;
+                "kde" (default) or "bootstrap"; type of prediction intervals for the surrogate 
+                model 
 
             type_exec: an str;
                 "independent" (default) is when surrogate models are adjusted independently on
@@ -855,7 +860,7 @@ class GPOpt:
                 (
                     "CustomRegressor(" + est[0] + ")",
                     ns.CustomRegressor(
-                        est[1](), replications=250, type_pi="kde"
+                        est[1](), replications=250, type_pi=type_pi
                     ),
                 )
                 for est in all_estimators()
