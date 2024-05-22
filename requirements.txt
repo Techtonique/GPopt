@@ -1,7 +1,9 @@
 joblib
 matplotlib
+nnetsauce 
 numpy
 pandas
 scipy
 scikit-learn
 threadpoolctl
+tqdm

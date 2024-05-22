@@ -1,3 +1,3 @@
-from .GPOpt.GPOpt import GPOpt
+from .GPOpt import GPOpt
 
 __all__ = ["GPOpt"]

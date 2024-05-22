@@ -20,7 +20,7 @@ class TestBranin(ut.TestCase):
             x2_bar = 15 * x[1]
             term1 = (
                 x2_bar
-                - (5.1 / (4 * np.pi ** 2)) * x1_bar ** 2
+                - (5.1 / (4 * np.pi**2)) * x1_bar**2
                 + (5 / np.pi) * x1_bar
                 - 6
             ) ** 2
@@ -62,7 +62,7 @@ class TestBranin(ut.TestCase):
             x2_bar = 15 * x[1]
             term1 = (
                 x2_bar
-                - (5.1 / (4 * np.pi ** 2)) * x1_bar ** 2
+                - (5.1 / (4 * np.pi**2)) * x1_bar**2
                 + (5 / np.pi) * x1_bar
                 - 6
             ) ** 2
@@ -115,7 +115,7 @@ class TestBranin(ut.TestCase):
             x2_bar = 15 * x[1]
             term1 = (
                 x2_bar
-                - (5.1 / (4 * np.pi ** 2)) * x1_bar ** 2
+                - (5.1 / (4 * np.pi**2)) * x1_bar**2
                 + (5 / np.pi) * x1_bar
                 - 6
             ) ** 2
