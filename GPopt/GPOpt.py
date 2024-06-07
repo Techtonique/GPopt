@@ -11,7 +11,10 @@ import pickle
 import shelve
 from collections import namedtuple
 from functools import partial
-from sklearn.utils.discovery import all_estimators
+try:
+    from sklearn.utils.discovery import all_estimators
+except:
+    from sklearn.utils import all_estimators
 from sklearn.base import RegressorMixin
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.ensemble import RandomForestRegressor
