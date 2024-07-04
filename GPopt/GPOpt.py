@@ -145,6 +145,8 @@ class GPOpt:
         self.y_min = None
         self.y_mean = None
         self.y_std = None
+        self.y_lower = None
+        self.y_upper = None
         self.best_surrogate = None
         self.acquisition = acquisition
         self.min_value = min_value
@@ -304,18 +306,34 @@ class GPOpt:
             return self.surrogate_obj.fit(X_train, y_train).predict(
                 X_test, return_std=True
             )
-        elif return_pi == True:
-            self.posterior_ = "mc"
-            res = self.surrogate_obj.fit(X_train, y_train).predict(
-                X_test, return_pi=True, method="splitconformal"
-            )
-            self.y_sims = res.sims
-            self.y_mean, self.y_std = (
-                np.mean(self.y_sims, axis=1),
-                np.std(self.y_sims, axis=1),
-            )
-            return self.y_mean, self.y_std, self.y_sims
+        elif return_pi == True: # here, self.surrogate_obj must have `replications` not None
+
+            if self.surrogate_obj.replications is not None: 
+
+                self.posterior_ = "mc"
+                res = self.surrogate_obj.fit(X_train, y_train).predict(
+                    X_test, return_pi=True, method="splitconformal"
+                )
+                self.y_sims = res.sims
+                self.y_mean, self.y_std = (
+                    np.mean(self.y_sims, axis=1),
+                    np.std(self.y_sims, axis=1),
+                )
+                return self.y_mean, self.y_std, self.y_sims
+            
+            else: # self.surrogate_obj is conformalized (uses nnetsauce.PredictionInterval)
+
+                assert self.acquisition == "ucb", "'acquisition' must be 'ucb' for conformalized surrogates"
+                self.posterior_ = None 
+                res = self.surrogate_obj.fit(X_train, y_train).predict(
+                    X_test, return_pi=True)
+                self.y_mean = res.mean
+                self.y_lower = res.lower 
+                self.y_upper = res.upper 
+                return self.y_mean, self.y_lower, self.y_upper
+
         else:
+
             raise NotImplementedError
 
     # fit predict timings
@@ -332,6 +350,7 @@ class GPOpt:
     def next_parameter_by_acq(self, i, acq="ei"):
 
         if acq == "ei":
+
             if self.posterior_ == "gaussian":
                 gamma_hat = (self.y_min - self.y_mean) / self.y_std
                 self.acq = -self.y_std * (
@@ -343,7 +362,15 @@ class GPOpt:
                 )
 
         if acq == "ucb":
-            self.acq = -(self.y_mean - 1.96 * self.y_std)
+
+            if self.posterior_ == "gaussian":
+
+                self.acq = -(self.y_mean - 1.96 * self.y_std)
+            
+            elif self.posterior_ is None: # split conformal(ized) estimator 
+
+                self.acq = -self.y_lower
+
 
         # find max index -----
 
@@ -429,7 +456,8 @@ class GPOpt:
                 additional parameters for the objective function (if necessary)
 
             method: an str;
-                "bayesian" (default) for Gaussian posteriors or "mc" for Monte Carlo posteriors
+                "bayesian" (default) for Gaussian posteriors, "mc" for Monte Carlo posteriors, 
+                "splitconformal" for conformalized surrogates 
 
         see also [Bayesian Optimization with GPopt](https://thierrymoudiki.github.io/blog/2021/04/16/python/misc/gpopt)
         and [Hyperparameters tuning with GPopt](https://thierrymoudiki.github.io/blog/2021/06/11/python/misc/hyperparam-tuning-gpopt)
@@ -439,7 +467,8 @@ class GPOpt:
         assert method in (
             "bayesian",
             "mc",
-        ), "method must be in ('bayesian', 'mc')"
+            "splitconformal"
+        ), "method must be in ('bayesian', 'mc', 'splitconformal')"
         self.method = method
 
         # verbose = 0: nothing is printed
@@ -573,6 +602,8 @@ class GPOpt:
                         return_pi=False,
                     )
                     y_mean, y_std = preds_with_std[0], preds_with_std[1]
+                    self.y_mean = y_mean
+                    self.y_std = np.maximum(2.220446049250313e-16, y_std)
 
             elif self.method == "mc":
                 self.posterior_ = "mc"
@@ -590,9 +621,23 @@ class GPOpt:
                     return_pi=True,
                 )
                 y_mean, y_std = preds_with_std[0], preds_with_std[1]
-
-            self.y_mean = y_mean
-            self.y_std = np.maximum(2.220446049250313e-16, y_std)
+                self.y_mean = y_mean
+                self.y_std = np.maximum(2.220446049250313e-16, y_std)
+            
+            elif self.method == "splitconformal":
+                self.posterior_ = None
+                assert self.surrogate_obj.__class__.__name__.startswith(
+                    "PredictionInterval"
+                ), "for `method = 'splitconformal'`, the surrogate must be a nnetsauce.PredictionInterval()"
+                preds_with_pi = self.surrogate_fit_predict(
+                    np.asarray(self.parameters),
+                    np.asarray(self.scores),
+                    self.x_choices,
+                    return_std=False,
+                    return_pi=True,
+                )
+                y_lower = preds_with_pi[1]  
+                self.lower = y_lower  
 
             # saving after initial design computation
             if self.save is not None:
@@ -631,8 +676,8 @@ class GPOpt:
 
         for i in range(n_iter):
 
-            # find next set of parameters (vector), maximizing ei
-            next_param = self.next_parameter_by_acq(i=i, acq="ei")
+            # find next set of parameters (vector), maximizing acquisition function
+            next_param = self.next_parameter_by_acq(i=i, acq=self.acquisition)
 
             try:
 
@@ -744,8 +789,8 @@ class GPOpt:
                         )
                     )
 
-            elif self.posterior_ == "mc" and self.method == "mc":
-                self.y_mean, self.y_std, self.y_sims = (
+            elif self.posterior_ in (None, "mc") and self.method in ("mc", "splitconformal"):
+                self.y_mean, self.y_lower, self.y_upper = (
                     self.surrogate_fit_predict(
                         np.asarray(self.parameters),
                         np.asarray(self.scores),
@@ -753,7 +798,8 @@ class GPOpt:
                         return_std=False,
                         return_pi=True,
                     )
-                )
+                )                    
+
             else:
                 return NotImplementedError
 
@@ -810,7 +856,7 @@ class GPOpt:
         func_args=None,
         method="bayesian",  # "bayesian" or "mc
         estimators="all",
-        type_pi="kde", # for now, 'kde' or 'bootstrap'
+        type_pi="kde", # for now, 'kde', 'bootstrap', 'splitconformal'
         type_exec="independent",  # "queue" or "independent" (default)
     ):
         """Launch optimization loop.
@@ -842,7 +888,7 @@ class GPOpt:
                 are adjusted; for example ["RandomForestRegressor", "Ridge"]
             
             type_pi: an str;
-                "kde" (default) or "bootstrap"; type of prediction intervals for the surrogate 
+                "kde" (default) or, "splitconformal"; type of prediction intervals for the surrogate 
                 model 
 
             type_exec: an str;
@@ -859,20 +905,40 @@ class GPOpt:
 
         else:
 
-            self.regressors = [
-                (
-                    "CustomRegressor(" + est[0] + ")",
-                    ns.CustomRegressor(
-                        est[1](), replications=150, type_pi=type_pi
-                    ),
-                )
-                for est in all_estimators()
-                if (
-                    issubclass(est[1], RegressorMixin)
-                    and (est[0] not in REMOVED_REGRESSORS)
-                    and (est[0] in estimators)
-                )
-            ]
+            if type_pi == "kde":
+
+                self.regressors = [
+                    (
+                        "CustomRegressor(" + est[0] + ")",
+                        ns.CustomRegressor(
+                            est[1](), replications=150, type_pi=type_pi
+                        ),
+                    )
+                    for est in all_estimators()
+                    if (
+                        issubclass(est[1], RegressorMixin)
+                        and (est[0] not in REMOVED_REGRESSORS)
+                        and (est[0] in estimators)
+                    )
+                ]
+
+            elif type_pi == "splitconformal": 
+
+                self.regressors = [
+                    (
+                        est[0],
+                        ns.PredictionInterval(
+                            est[1](), 
+                            type_pi="splitconformal"
+                        ),
+                    )
+                    for est in all_estimators()
+                    if (
+                        issubclass(est[1], RegressorMixin)
+                        and (est[0] not in REMOVED_REGRESSORS)
+                        and (est[0] in estimators)
+                    )
+                ]
 
         self.surrogate_fit_predict = partial(
             self.surrogate_fit_predict, return_pi=True
