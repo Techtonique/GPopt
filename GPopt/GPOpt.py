@@ -583,7 +583,7 @@ class GPOpt:
 
             # current gp mean and std on initial design
             # /!\ if GP
-            if self.method == "bayesian":
+            if self.method == "bayesian":                
                 self.posterior_ = "gaussian"
                 try:
                     y_mean, y_std = self.surrogate_fit_predict(
@@ -602,8 +602,9 @@ class GPOpt:
                         return_pi=False,
                     )
                     y_mean, y_std = preds_with_std[0], preds_with_std[1]
-                    self.y_mean = y_mean
-                    self.y_std = np.maximum(2.220446049250313e-16, y_std)
+                self.y_mean = y_mean
+                self.y_std = np.maximum(2.220446049250313e-16, y_std)
+                
 
             elif self.method == "mc":
                 self.posterior_ = "mc"
