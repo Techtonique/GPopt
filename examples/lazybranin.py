@@ -48,9 +48,10 @@ gp_opt1 = gp.GPOpt(x_init = X_init,
                    lower_bound = np.array([-5, 0]), 
                    upper_bound = np.array([10, 15]), 
                    objective_func=branin, 
+                   method = "mc", 
                    n_choices=25000, 
                    n_init=10, 
                    n_iter=190,                    
                    seed=4327)
 
-gp_opt1.lazyoptimize(method = "mc", verbose=2, abs_tol=1e-4)
+gp_opt1.lazyoptimize(verbose=2, abs_tol=1e-4)

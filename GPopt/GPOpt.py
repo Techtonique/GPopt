@@ -80,6 +80,10 @@ class GPOpt:
 
         acquisition: a string;
             acquisition function: "ei" (expected improvement) or "ucb" (upper confidence bound)
+        
+        method: an str;
+            "bayesian" (default) for Gaussian posteriors, "mc" for Monte Carlo posteriors, 
+            "splitconformal" for conformalized surrogates 
 
         min_value: a float;
             minimum value of the objective function (default is None). For example,
@@ -114,6 +118,7 @@ class GPOpt:
         save=None,
         n_jobs=None,
         acquisition="ei",
+        method="bayesian",
         min_value=None,
         per_second=False,  # /!\ very experimental
         log_scale=False,  # /!\ experimental
@@ -148,7 +153,7 @@ class GPOpt:
         self.y_lower = None
         self.y_upper = None
         self.best_surrogate = None
-        self.acquisition = acquisition
+        self.acquisition = acquisition        
         self.min_value = min_value
         self.acq = np.array([])
         self.max_acq = []
@@ -162,7 +167,12 @@ class GPOpt:
             )
         else:
             self.surrogate_obj = surrogate_obj
-        self.method = None
+        assert method in (
+            "bayesian",
+            "mc",
+            "splitconformal"
+        ), "method must be in ('bayesian', 'mc', 'splitconformal')"
+        self.method = method
         self.posterior_ = None
 
         # Sobol seqs for initial design and choices
@@ -301,11 +311,14 @@ class GPOpt:
         assert (
             return_std == True and return_pi == True
         ) == False, "must have either return_std == True or return_pi == True"
+
         if return_std == True:
+
             self.posterior_ = "gaussian"
             return self.surrogate_obj.fit(X_train, y_train).predict(
                 X_test, return_std=True
             )
+        
         elif return_pi == True: # here, self.surrogate_obj must have `replications` not None
 
             if self.surrogate_obj.replications is not None: 
@@ -431,8 +444,7 @@ class GPOpt:
         n_more_iter=None,
         abs_tol=None,  # suggested 1e-4, for n_iter = 200
         min_budget=50,  # minimum budget for early stopping
-        func_args=None,
-        method="bayesian",
+        func_args=None,        
     ):
         """Launch optimization loop.
 
@@ -453,23 +465,12 @@ class GPOpt:
                 minimum number of iterations before early stopping controlled by `abs_tol`
 
             func_args: a list;
-                additional parameters for the objective function (if necessary)
-
-            method: an str;
-                "bayesian" (default) for Gaussian posteriors, "mc" for Monte Carlo posteriors, 
-                "splitconformal" for conformalized surrogates 
+                additional parameters for the objective function (if necessary)            
 
         see also [Bayesian Optimization with GPopt](https://thierrymoudiki.github.io/blog/2021/04/16/python/misc/gpopt)
         and [Hyperparameters tuning with GPopt](https://thierrymoudiki.github.io/blog/2021/06/11/python/misc/hyperparam-tuning-gpopt)
 
         """
-
-        assert method in (
-            "bayesian",
-            "mc",
-            "splitconformal"
-        ), "method must be in ('bayesian', 'mc', 'splitconformal')"
-        self.method = method
 
         # verbose = 0: nothing is printed
         # verbose = 1: a progress bar is printed (longer than 0)
@@ -610,7 +611,9 @@ class GPOpt:
                 self.posterior_ = "mc"
                 assert self.surrogate_obj.__class__.__name__.startswith(
                     "CustomRegressor"
-                ), "for `method = 'mc'`, the surrogate must be a nnetsauce.CustomRegressor()"
+                ) or self.surrogate_obj.__class__.__name__.startswith(
+                    "PredictionInterval"
+                ), "for `method = 'mc'`, the surrogate must be a nnetsauce.CustomRegressor() or nnetsauce.PredictionInterval()"
                 assert (
                     self.surrogate_obj.replications is not None
                 ), "for `method = 'mc'`, the surrogate must be a nnetsauce.CustomRegressor() with a number of 'replications' provided"
@@ -1022,7 +1025,6 @@ class GPOpt:
                             abs_tol=abs_tol,  # suggested 1e-4, for n_iter = 200
                             min_budget=min_budget,  # minimum budget for early stopping
                             func_args=func_args,
-                            method=method,
                         )
 
                         score_next_param = gp_opt_obj.y_min
@@ -1106,7 +1108,6 @@ class GPOpt:
                             abs_tol=abs_tol,  # suggested 1e-4, for n_iter = 200
                             min_budget=min_budget,  # minimum budget for early stopping
                             func_args=func_args,
-                            method=method,
                         )
 
                         score_next_param = gp_opt_obj.y_min
@@ -1157,7 +1158,6 @@ class GPOpt:
                             abs_tol=abs_tol,  # suggested 1e-4, for n_iter = 200
                             min_budget=min_budget,  # minimum budget for early stopping
                             func_args=func_args,
-                            method=method,
                         )
 
                         return gp_opt_obj

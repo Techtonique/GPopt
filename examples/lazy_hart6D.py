@@ -45,12 +45,13 @@ print("2 - Hartmann 6D")
 # hart6
 gp_opt1 = gp.GPOpt(objective_func=hart6,
                 lower_bound = np.repeat(0, 6), 
-                upper_bound = np.repeat(1, 6),                 
+                upper_bound = np.repeat(1, 6),  
+                method = "mc",                
                  n_init=10, n_iter=90)    
 
 
 print("\n 2 - 1 type_exec = 'independent' sequential")
-gp_opt1.lazyoptimize(method = "mc", verbose=2, abs_tol=1e-4, 
+gp_opt1.lazyoptimize(verbose=2, abs_tol=1e-4, 
                      type_exec = "independent",
                      estimators = ["LinearRegression",
                                     "RidgeCV",
@@ -68,14 +69,14 @@ print("\n")
 print("\n 2 - 1 type_exec = 'independent' parallel")
 gp_opt3 = gp.GPOpt(objective_func=hart6, 
                 lower_bound = np.repeat(0, 6), 
-                upper_bound = np.repeat(1, 6),                 
+                upper_bound = np.repeat(1, 6),     
+                method = "mc",            
                  n_init=10, n_iter=190, 
                  n_jobs=-1)    
 
 print("\n 2 - 1 type_exec = 'independent'")
 start = time()
-gp_opt3.lazyoptimize(method = "mc", 
-                     verbose=0, abs_tol=1e-2, 
+gp_opt3.lazyoptimize(verbose=0, abs_tol=1e-2, 
                      type_exec = "independent",
                      estimators = ["LinearRegression", 
                                    "Ridge"
@@ -92,12 +93,13 @@ print("\n")
 
 print("\n 2 - 2 type_exec = 'queue'")
 
-gp_opt2 = gp.GPOpt(objective_func=hart6, 
-                lower_bound = np.repeat(0, 6), 
-                upper_bound = np.repeat(1, 6),                 
-                 n_init=10, n_iter=90)    
+gp_opt2 = gp.GPOpt(objective_func=hart6,                    
+                   lower_bound = np.repeat(0, 6), 
+                   upper_bound = np.repeat(1, 6),                 
+                   method = "mc", 
+                   n_init=10, n_iter=90)    
 
-gp_opt2.lazyoptimize(method = "mc", verbose=2, abs_tol=1e-4, 
+gp_opt2.lazyoptimize(verbose=2, abs_tol=1e-4, 
                      type_exec = "queue",
                      estimators = [ "BaggingRegressor",
                                     "ExtraTreesRegressor",                                    

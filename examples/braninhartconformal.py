@@ -38,11 +38,12 @@ gp_opt2 = gp.GPOpt(lower_bound = np.repeat(0, 6),
                    n_iter=280,                    
                    seed=4327, 
                    acquisition="ucb",
+                   method="splitconformal",
                    surrogate_obj=ns.PredictionInterval(obj=RandomForestRegressor(), 
                                                        method="splitconformal")
                    )
 
-gp_opt2.optimize(verbose=2, method="splitconformal", abs_tol=1e-4)
+gp_opt2.optimize(verbose=2, abs_tol=1e-4)
 
 gp_opt3 = gp.GPOpt(lower_bound = np.repeat(0, 6), 
                    upper_bound = np.repeat(1, 6),                 
@@ -52,11 +53,12 @@ gp_opt3 = gp.GPOpt(lower_bound = np.repeat(0, 6),
                    n_iter=280,                    
                    seed=4327, 
                    acquisition="ucb",
+                   method="splitconformal",
                    surrogate_obj=ns.PredictionInterval(obj=ExtraTreesRegressor(), 
                                                        method="splitconformal")
                    )
 
-gp_opt3.optimize(verbose=2, method="splitconformal", abs_tol=1e-4)
+gp_opt3.optimize(verbose=2, abs_tol=1e-4)
 
 
 
