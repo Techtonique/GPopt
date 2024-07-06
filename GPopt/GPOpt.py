@@ -369,7 +369,7 @@ class GPOpt:
             
             elif self.posterior_ is None: # split conformal(ized) estimator 
 
-                self.acq = -self.y_lower
+                self.acq = self.y_lower
 
 
         # find max index -----
