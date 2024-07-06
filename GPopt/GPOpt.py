@@ -858,7 +858,6 @@ class GPOpt:
         abs_tol=None,  # suggested 1e-4, for n_iter = 200
         min_budget=50,  # minimum budget for early stopping
         func_args=None,
-        method="bayesian",  # "bayesian" or "mc
         estimators="all",
         type_pi="kde", # for now, 'kde', 'bootstrap', 'splitconformal'
         type_exec="independent",  # "queue" or "independent" (default)
@@ -883,9 +882,6 @@ class GPOpt:
 
             func_args: a list;
                 additional parameters for the objective function (if necessary)
-
-            method: an str;
-                "bayesian" (default) for Gaussian posteriors or "mc" for Monte Carlo posteriors
 
             estimators: an str or a list of strs (estimators names)
                 if "all", then 30 models are fitted. Otherwise, only those provided in the list
@@ -978,6 +974,7 @@ class GPOpt:
                 seed=self.seed,
                 n_jobs=self.n_jobs,
                 acquisition=self.acquisition,
+                method=self.method,
                 min_value=self.min_value,
                 surrogate_obj=copy.deepcopy(self.regressors[0][1]),
             )
@@ -987,7 +984,6 @@ class GPOpt:
                 abs_tol=abs_tol,  # suggested 1e-4, for n_iter = 200
                 min_budget=min_budget,  # minimum budget for early stopping
                 func_args=func_args,
-                method=method,
             )
 
             score_next_param = gp_opt_obj_prev.y_min
@@ -1014,6 +1010,7 @@ class GPOpt:
                             seed=self.seed,
                             n_jobs=self.n_jobs,
                             acquisition=self.acquisition,
+                            method=self.method,
                             min_value=self.min_value,
                             surrogate_obj=copy.deepcopy(self.regressors[i][1]),
                             x_init=np.asarray(gp_opt_obj_prev.parameters),
@@ -1099,6 +1096,7 @@ class GPOpt:
                             seed=self.seed,
                             n_jobs=self.n_jobs,
                             acquisition=self.acquisition,
+                            method=self.method,
                             min_value=self.min_value,
                             surrogate_obj=copy.deepcopy(self.regressors[i][1]),
                         )
@@ -1148,6 +1146,7 @@ class GPOpt:
                         seed=self.seed,
                         n_jobs=self.n_jobs,
                         acquisition=self.acquisition,
+                        method=self.method,
                         min_value=self.min_value,
                         surrogate_obj=copy.deepcopy(self.regressors[i][1]),
                     )
