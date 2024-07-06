@@ -365,7 +365,7 @@ class GPOpt:
 
             if self.posterior_ == "gaussian":
 
-                self.acq = -(self.y_mean - 1.96 * self.y_std)
+                self.acq = (self.y_mean - 1.96 * self.y_std)
             
             elif self.posterior_ is None: # split conformal(ized) estimator 
 
