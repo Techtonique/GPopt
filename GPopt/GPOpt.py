@@ -45,7 +45,7 @@ class GPOpt:
         params_names: a list;
             names of the parameters of the objective function (optional)
 
-        surrogate_obj: a GaussianProcessRegressor object;
+        surrogate_obj: an object;
             An ML model for estimating the uncertainty around the objective function
 
         x_init:
@@ -459,7 +459,7 @@ class GPOpt:
                 additional number of iterations for the optimizer (which has been run once)
 
             abs_tol: a float;
-                tolerance for convergence of the optimizer (early stopping based on expected improvement)
+                tolerance for convergence of the optimizer (early stopping based on acquisition function)
 
             min_budget: an integer (default is 50);
                 minimum number of iterations before early stopping controlled by `abs_tol`
@@ -820,9 +820,9 @@ class GPOpt:
                 # if self.max_acq.size > (self.n_init + self.n_iter * min_budget_pct):
                 if len(self.max_acq) > min_budget:
 
-                    diff_max_ei = np.abs(np.diff(np.asarray(self.max_acq)))
+                    diff_max_acq = np.abs(np.diff(np.asarray(self.max_acq)))
 
-                    if diff_max_ei[-1] <= abs_tol:
+                    if diff_max_acq[-1] <= abs_tol:
 
                         iter_stop = len(self.max_acq)  # index i starts at 0
 
