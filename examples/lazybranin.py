@@ -1,8 +1,10 @@
 import os 
 import GPopt as gp
+import nnetsauce as ns 
 import numpy as np
 from os import chdir
 from scipy.optimize import minimize
+from sklearn.linear_model import Ridge 
 
 print(f"\n ----- Running: {os.path.basename(__file__)}... ----- \n")
 
@@ -48,9 +50,13 @@ gp_opt1 = gp.GPOpt(x_init = X_init,
                    lower_bound = np.array([-5, 0]), 
                    upper_bound = np.array([10, 15]), 
                    objective_func=branin, 
+                   method = "mc", 
                    n_choices=25000, 
                    n_init=10, 
                    n_iter=190,                    
                    seed=4327)
 
-gp_opt1.lazyoptimize(method = "mc", verbose=2, abs_tol=1e-4)
+print(f"gp_opt1.method: {gp_opt1.method}")                   
+
+gp_opt1.lazyoptimize(verbose=2, abs_tol=1e-4)
+

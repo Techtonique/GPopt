@@ -91,6 +91,7 @@ print("1 - Branin more iter")
 gp_opt3 = gp.GPOpt(objective_func=branin, 
                 lower_bound = np.array([-5, 0]), 
                  upper_bound = np.array([10, 15]),
+                 method="bayesian",
                  n_init=10, n_iter=10)    
 gp_opt3.optimize(verbose=1)
 #plt.plot(np.diff(gp_opt3.max_ei))
@@ -141,6 +142,7 @@ print("3 - with saving and loading")
 gp_opt1 = gp.GPOpt(objective_func=branin, 
                 lower_bound = np.array([-5, 0]), 
                 upper_bound = np.array([10, 15]), 
+                method="bayesian",
                  n_init=10, n_iter=25, 
                 #save = "/Users/t/Documents/my_data/save")        
                 save = "./save")        

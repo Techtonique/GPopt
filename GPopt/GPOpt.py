@@ -80,6 +80,10 @@ class GPOpt:
 
         acquisition: a string;
             acquisition function: "ei" (expected improvement) or "ucb" (upper confidence bound)
+        
+        method: an str;
+            "bayesian" (default) for Gaussian posteriors, "mc" for Monte Carlo posteriors, 
+            "splitconformal" for conformalized surrogates 
 
         min_value: a float;
             minimum value of the objective function (default is None). For example,
@@ -114,6 +118,7 @@ class GPOpt:
         save=None,
         n_jobs=None,
         acquisition="ei",
+        method="bayesian",
         min_value=None,
         per_second=False,  # /!\ very experimental
         log_scale=False,  # /!\ experimental
@@ -145,8 +150,10 @@ class GPOpt:
         self.y_min = None
         self.y_mean = None
         self.y_std = None
+        self.y_lower = None
+        self.y_upper = None
         self.best_surrogate = None
-        self.acquisition = acquisition
+        self.acquisition = acquisition        
         self.min_value = min_value
         self.acq = np.array([])
         self.max_acq = []
@@ -160,7 +167,12 @@ class GPOpt:
             )
         else:
             self.surrogate_obj = surrogate_obj
-        self.method = None
+        assert method in (
+            "bayesian",
+            "mc",
+            "splitconformal"
+        ), "method must be in ('bayesian', 'mc', 'splitconformal')"
+        self.method = method
         self.posterior_ = None
 
         # Sobol seqs for initial design and choices
@@ -299,23 +311,42 @@ class GPOpt:
         assert (
             return_std == True and return_pi == True
         ) == False, "must have either return_std == True or return_pi == True"
+
         if return_std == True:
+
             self.posterior_ = "gaussian"
             return self.surrogate_obj.fit(X_train, y_train).predict(
                 X_test, return_std=True
             )
-        elif return_pi == True:
-            self.posterior_ = "mc"
-            res = self.surrogate_obj.fit(X_train, y_train).predict(
-                X_test, return_pi=True, method="splitconformal"
-            )
-            self.y_sims = res.sims
-            self.y_mean, self.y_std = (
-                np.mean(self.y_sims, axis=1),
-                np.std(self.y_sims, axis=1),
-            )
-            return self.y_mean, self.y_std, self.y_sims
+        
+        elif return_pi == True: # here, self.surrogate_obj must have `replications` not None
+
+            if self.surrogate_obj.replications is not None: 
+
+                self.posterior_ = "mc"
+                res = self.surrogate_obj.fit(X_train, y_train).predict(
+                    X_test, return_pi=True, method="splitconformal"
+                )
+                self.y_sims = res.sims
+                self.y_mean, self.y_std = (
+                    np.mean(self.y_sims, axis=1),
+                    np.std(self.y_sims, axis=1),
+                )
+                return self.y_mean, self.y_std, self.y_sims
+            
+            else: # self.surrogate_obj is conformalized (uses nnetsauce.PredictionInterval)
+
+                assert self.acquisition == "ucb", "'acquisition' must be 'ucb' for conformalized surrogates"
+                self.posterior_ = None 
+                res = self.surrogate_obj.fit(X_train, y_train).predict(
+                    X_test, return_pi=True)
+                self.y_mean = res.mean
+                self.y_lower = res.lower 
+                self.y_upper = res.upper 
+                return self.y_mean, self.y_lower, self.y_upper
+
         else:
+
             raise NotImplementedError
 
     # fit predict timings
@@ -332,6 +363,7 @@ class GPOpt:
     def next_parameter_by_acq(self, i, acq="ei"):
 
         if acq == "ei":
+
             if self.posterior_ == "gaussian":
                 gamma_hat = (self.y_min - self.y_mean) / self.y_std
                 self.acq = -self.y_std * (
@@ -343,7 +375,15 @@ class GPOpt:
                 )
 
         if acq == "ucb":
-            self.acq = -(self.y_mean - 1.96 * self.y_std)
+
+            if self.posterior_ == "gaussian":
+
+                self.acq = (self.y_mean - 1.96 * self.y_std)
+            
+            elif self.posterior_ is None: # split conformal(ized) estimator 
+
+                self.acq = self.y_lower
+
 
         # find max index -----
 
@@ -404,8 +444,7 @@ class GPOpt:
         n_more_iter=None,
         abs_tol=None,  # suggested 1e-4, for n_iter = 200
         min_budget=50,  # minimum budget for early stopping
-        func_args=None,
-        method="bayesian",
+        func_args=None,        
     ):
         """Launch optimization loop.
 
@@ -426,21 +465,12 @@ class GPOpt:
                 minimum number of iterations before early stopping controlled by `abs_tol`
 
             func_args: a list;
-                additional parameters for the objective function (if necessary)
-
-            method: an str;
-                "bayesian" (default) for Gaussian posteriors or "mc" for Monte Carlo posteriors
+                additional parameters for the objective function (if necessary)            
 
         see also [Bayesian Optimization with GPopt](https://thierrymoudiki.github.io/blog/2021/04/16/python/misc/gpopt)
         and [Hyperparameters tuning with GPopt](https://thierrymoudiki.github.io/blog/2021/06/11/python/misc/hyperparam-tuning-gpopt)
 
         """
-
-        assert method in (
-            "bayesian",
-            "mc",
-        ), "method must be in ('bayesian', 'mc')"
-        self.method = method
 
         # verbose = 0: nothing is printed
         # verbose = 1: a progress bar is printed (longer than 0)
@@ -554,7 +584,7 @@ class GPOpt:
 
             # current gp mean and std on initial design
             # /!\ if GP
-            if self.method == "bayesian":
+            if self.method == "bayesian":                
                 self.posterior_ = "gaussian"
                 try:
                     y_mean, y_std = self.surrogate_fit_predict(
@@ -573,12 +603,17 @@ class GPOpt:
                         return_pi=False,
                     )
                     y_mean, y_std = preds_with_std[0], preds_with_std[1]
+                self.y_mean = y_mean
+                self.y_std = np.maximum(2.220446049250313e-16, y_std)
+                
 
             elif self.method == "mc":
                 self.posterior_ = "mc"
                 assert self.surrogate_obj.__class__.__name__.startswith(
                     "CustomRegressor"
-                ), "for `method = 'mc'`, the surrogate must be a nnetsauce.CustomRegressor()"
+                ) or self.surrogate_obj.__class__.__name__.startswith(
+                    "PredictionInterval"
+                ), "for `method = 'mc'`, the surrogate must be a nnetsauce.CustomRegressor() or nnetsauce.PredictionInterval()"
                 assert (
                     self.surrogate_obj.replications is not None
                 ), "for `method = 'mc'`, the surrogate must be a nnetsauce.CustomRegressor() with a number of 'replications' provided"
@@ -590,9 +625,23 @@ class GPOpt:
                     return_pi=True,
                 )
                 y_mean, y_std = preds_with_std[0], preds_with_std[1]
-
-            self.y_mean = y_mean
-            self.y_std = np.maximum(2.220446049250313e-16, y_std)
+                self.y_mean = y_mean
+                self.y_std = np.maximum(2.220446049250313e-16, y_std)
+            
+            elif self.method == "splitconformal":
+                self.posterior_ = None
+                assert self.surrogate_obj.__class__.__name__.startswith(
+                    "PredictionInterval"
+                ), "for `method = 'splitconformal'`, the surrogate must be a nnetsauce.PredictionInterval()"
+                preds_with_pi = self.surrogate_fit_predict(
+                    np.asarray(self.parameters),
+                    np.asarray(self.scores),
+                    self.x_choices,
+                    return_std=False,
+                    return_pi=True,
+                )
+                y_lower = preds_with_pi[1]  
+                self.lower = y_lower  
 
             # saving after initial design computation
             if self.save is not None:
@@ -631,8 +680,8 @@ class GPOpt:
 
         for i in range(n_iter):
 
-            # find next set of parameters (vector), maximizing ei
-            next_param = self.next_parameter_by_acq(i=i, acq="ei")
+            # find next set of parameters (vector), maximizing acquisition function
+            next_param = self.next_parameter_by_acq(i=i, acq=self.acquisition)
 
             try:
 
@@ -744,8 +793,8 @@ class GPOpt:
                         )
                     )
 
-            elif self.posterior_ == "mc" and self.method == "mc":
-                self.y_mean, self.y_std, self.y_sims = (
+            elif self.posterior_ in (None, "mc") and self.method in ("mc", "splitconformal"):
+                self.y_mean, self.y_lower, self.y_upper = (
                     self.surrogate_fit_predict(
                         np.asarray(self.parameters),
                         np.asarray(self.scores),
@@ -753,7 +802,8 @@ class GPOpt:
                         return_std=False,
                         return_pi=True,
                     )
-                )
+                )                    
+
             else:
                 return NotImplementedError
 
@@ -808,9 +858,8 @@ class GPOpt:
         abs_tol=None,  # suggested 1e-4, for n_iter = 200
         min_budget=50,  # minimum budget for early stopping
         func_args=None,
-        method="bayesian",  # "bayesian" or "mc
         estimators="all",
-        type_pi="kde", # for now, 'kde' or 'bootstrap'
+        type_pi="kde", # for now, 'kde', 'bootstrap', 'splitconformal'
         type_exec="independent",  # "queue" or "independent" (default)
     ):
         """Launch optimization loop.
@@ -834,15 +883,12 @@ class GPOpt:
             func_args: a list;
                 additional parameters for the objective function (if necessary)
 
-            method: an str;
-                "bayesian" (default) for Gaussian posteriors or "mc" for Monte Carlo posteriors
-
             estimators: an str or a list of strs (estimators names)
                 if "all", then 30 models are fitted. Otherwise, only those provided in the list
                 are adjusted; for example ["RandomForestRegressor", "Ridge"]
             
             type_pi: an str;
-                "kde" (default) or "bootstrap"; type of prediction intervals for the surrogate 
+                "kde" (default) or, "splitconformal"; type of prediction intervals for the surrogate 
                 model 
 
             type_exec: an str;
@@ -859,20 +905,40 @@ class GPOpt:
 
         else:
 
-            self.regressors = [
-                (
-                    "CustomRegressor(" + est[0] + ")",
-                    ns.CustomRegressor(
-                        est[1](), replications=150, type_pi=type_pi
-                    ),
-                )
-                for est in all_estimators()
-                if (
-                    issubclass(est[1], RegressorMixin)
-                    and (est[0] not in REMOVED_REGRESSORS)
-                    and (est[0] in estimators)
-                )
-            ]
+            if type_pi == "kde":
+
+                self.regressors = [
+                    (
+                        "CustomRegressor(" + est[0] + ")",
+                        ns.CustomRegressor(
+                            est[1](), replications=150, type_pi=type_pi
+                        ),
+                    )
+                    for est in all_estimators()
+                    if (
+                        issubclass(est[1], RegressorMixin)
+                        and (est[0] not in REMOVED_REGRESSORS)
+                        and (est[0] in estimators)
+                    )
+                ]
+
+            elif type_pi == "splitconformal": 
+
+                self.regressors = [
+                    (
+                        est[0],
+                        ns.PredictionInterval(
+                            est[1](), 
+                            type_pi="splitconformal"
+                        ),
+                    )
+                    for est in all_estimators()
+                    if (
+                        issubclass(est[1], RegressorMixin)
+                        and (est[0] not in REMOVED_REGRESSORS)
+                        and (est[0] in estimators)
+                    )
+                ]
 
         self.surrogate_fit_predict = partial(
             self.surrogate_fit_predict, return_pi=True
@@ -908,6 +974,7 @@ class GPOpt:
                 seed=self.seed,
                 n_jobs=self.n_jobs,
                 acquisition=self.acquisition,
+                method=self.method,
                 min_value=self.min_value,
                 surrogate_obj=copy.deepcopy(self.regressors[0][1]),
             )
@@ -917,7 +984,6 @@ class GPOpt:
                 abs_tol=abs_tol,  # suggested 1e-4, for n_iter = 200
                 min_budget=min_budget,  # minimum budget for early stopping
                 func_args=func_args,
-                method=method,
             )
 
             score_next_param = gp_opt_obj_prev.y_min
@@ -944,6 +1010,7 @@ class GPOpt:
                             seed=self.seed,
                             n_jobs=self.n_jobs,
                             acquisition=self.acquisition,
+                            method=self.method,
                             min_value=self.min_value,
                             surrogate_obj=copy.deepcopy(self.regressors[i][1]),
                             x_init=np.asarray(gp_opt_obj_prev.parameters),
@@ -955,7 +1022,6 @@ class GPOpt:
                             abs_tol=abs_tol,  # suggested 1e-4, for n_iter = 200
                             min_budget=min_budget,  # minimum budget for early stopping
                             func_args=func_args,
-                            method=method,
                         )
 
                         score_next_param = gp_opt_obj.y_min
@@ -1030,6 +1096,7 @@ class GPOpt:
                             seed=self.seed,
                             n_jobs=self.n_jobs,
                             acquisition=self.acquisition,
+                            method=self.method,
                             min_value=self.min_value,
                             surrogate_obj=copy.deepcopy(self.regressors[i][1]),
                         )
@@ -1039,7 +1106,6 @@ class GPOpt:
                             abs_tol=abs_tol,  # suggested 1e-4, for n_iter = 200
                             min_budget=min_budget,  # minimum budget for early stopping
                             func_args=func_args,
-                            method=method,
                         )
 
                         score_next_param = gp_opt_obj.y_min
@@ -1080,6 +1146,7 @@ class GPOpt:
                         seed=self.seed,
                         n_jobs=self.n_jobs,
                         acquisition=self.acquisition,
+                        method=self.method,
                         min_value=self.min_value,
                         surrogate_obj=copy.deepcopy(self.regressors[i][1]),
                     )
@@ -1090,7 +1157,6 @@ class GPOpt:
                             abs_tol=abs_tol,  # suggested 1e-4, for n_iter = 200
                             min_budget=min_budget,  # minimum budget for early stopping
                             func_args=func_args,
-                            method=method,
                         )
 
                         return gp_opt_obj
