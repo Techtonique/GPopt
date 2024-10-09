@@ -379,10 +379,12 @@ class GPOpt:
             if self.posterior_ == "gaussian":
 
                 self.acq = (self.y_mean - 1.96 * self.y_std)
+                self.ucb = self.y_mean + 1.96 * self.y_std
             
             elif self.posterior_ is None: # split conformal(ized) estimator 
 
                 self.acq = self.y_lower
+                self.ucb = self.y_upper
 
 
         # find max index -----
@@ -443,6 +445,7 @@ class GPOpt:
         verbose=1,
         n_more_iter=None,
         abs_tol=None,  # suggested 1e-4, for n_iter = 200
+        ucb_tol=None,
         min_budget=50,  # minimum budget for early stopping
         func_args=None,        
     ):
@@ -460,6 +463,10 @@ class GPOpt:
 
             abs_tol: a float;
                 tolerance for convergence of the optimizer (early stopping based on acquisition function)
+            
+            ucb_tol: a float;
+                tolerance for convergence of the optimizer (early stopping based on length of prediction intervals)
+                for UCB criterion
 
             min_budget: an integer (default is 50);
                 minimum number of iterations before early stopping controlled by `abs_tol`
@@ -672,6 +679,14 @@ class GPOpt:
             assert (
                 min_budget > 20
             ), "With 'abs_tol' provided, you must have 'min_budget' > 20"
+            self.abs_tol = abs_tol
+        
+        if ucb_tol is not None:
+            assert (
+                min_budget > 20
+            ), "With 'ucb_tol' provided, you must have 'min_budget' > 20"
+            assert self.acquisition == "ucb", "With 'ucb_tol' provided, you must have 'acquisition' == 'ucb'"
+            self.ucb_tol = ucb_tol
 
         if verbose == 1:
             progbar = Progbar(target=n_iter)
@@ -825,6 +840,16 @@ class GPOpt:
                     if diff_max_acq[-1] <= abs_tol:
 
                         iter_stop = len(self.max_acq)  # index i starts at 0
+
+                        break
+            
+            if ucb_tol is not None:
+
+                if len(self.max_acq) > min_budget:
+
+                    if self.ucb[-1] - self.acq[-1] <= ucb_tol: # self.ucb is the upper confidence bound for UCB criterion
+
+                        iter_stop = len(self.max_acq)
 
                         break
 
