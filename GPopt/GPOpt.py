@@ -390,7 +390,6 @@ class GPOpt:
         # find max index -----
 
         if self.per_second is False:
-
             # find index for max. ei
             max_index = self.acq.argmin()
 
@@ -637,9 +636,9 @@ class GPOpt:
             
             elif self.method == "splitconformal":
                 self.posterior_ = None
-                assert self.surrogate_obj.__class__.__name__.startswith(
-                    "PredictionInterval"
-                ), "for `method = 'splitconformal'`, the surrogate must be a nnetsauce.PredictionInterval()"
+                #assert self.surrogate_obj.__class__.__name__.startswith(
+                #    "PredictionInterval"
+                #), "for `method = 'splitconformal'`, the surrogate must be a nnetsauce.PredictionInterval()"
                 preds_with_pi = self.surrogate_fit_predict(
                     np.asarray(self.parameters),
                     np.asarray(self.scores),
@@ -885,6 +884,7 @@ class GPOpt:
         self,
         verbose=1,
         abs_tol=None,  # suggested 1e-4, for n_iter = 200
+        ucb_tol=None,
         min_budget=50,  # minimum budget for early stopping
         func_args=None,
         estimators="all",
@@ -905,6 +905,9 @@ class GPOpt:
 
             abs_tol: a float;
                 tolerance for convergence of the optimizer (early stopping based on expected improvement)
+            
+            ucb_tol: a float;
+                tolerance for convergence of the optimizer (early stopping based on length of prediction intervals)
 
             min_budget: an integer (default is 50);
                 minimum number of iterations before early stopping controlled by `abs_tol`
@@ -930,7 +933,22 @@ class GPOpt:
 
         if estimators == "all":
 
-            self.regressors = REGRESSORS
+            if type_pi == "kde":
+
+                self.regressors = REGRESSORS
+            
+            else: 
+
+                self.regressors = [
+                    (
+                        est[0],
+                        ns.PredictionInterval(
+                            est[1](), 
+                            type_pi="splitconformal"
+                        ),
+                    )
+                    for est in all_estimators()
+                    if (issubclass(est[1], RegressorMixin) and (est[0] not in REMOVED_REGRESSORS))]
 
         else:
 
@@ -1011,6 +1029,7 @@ class GPOpt:
             gp_opt_obj_prev.optimize(
                 verbose=verbose,
                 abs_tol=abs_tol,  # suggested 1e-4, for n_iter = 200
+                ucb_tol=ucb_tol,
                 min_budget=min_budget,  # minimum budget for early stopping
                 func_args=func_args,
             )
@@ -1049,6 +1068,7 @@ class GPOpt:
                         gp_opt_obj.optimize(
                             verbose=verbose,
                             abs_tol=abs_tol,  # suggested 1e-4, for n_iter = 200
+                            ucb_tol=ucb_tol,
                             min_budget=min_budget,  # minimum budget for early stopping
                             func_args=func_args,
                         )
@@ -1107,58 +1127,59 @@ class GPOpt:
 
                 for i in range(len(self.regressors)):
 
-                    try:
+                    #try:
 
-                        if verbose == 2:
-                            print(
-                                f"\n adjusting surrogate model # {i + 1} ({self.regressors[i][0]})... \n"
-                            )
+                    if verbose == 2:
+                        print(
+                            f"\n adjusting surrogate model # {i + 1} ({self.regressors[i][0]})... \n"
+                        )
+                    
+                    gp_opt_obj = GPOpt(
+                        objective_func=self.objective_func,
+                        lower_bound=self.lower_bound,
+                        upper_bound=self.upper_bound,
+                        n_init=self.n_init,
+                        n_iter=self.n_iter,
+                        alpha=self.alpha,
+                        n_restarts_optimizer=self.n_restarts_optimizer,
+                        seed=self.seed,
+                        n_jobs=self.n_jobs,
+                        acquisition=self.acquisition,
+                        method=self.method,
+                        min_value=self.min_value,
+                        surrogate_obj=copy.deepcopy(self.regressors[i][1]),
+                    )
 
-                        gp_opt_obj = GPOpt(
-                            objective_func=self.objective_func,
-                            lower_bound=self.lower_bound,
-                            upper_bound=self.upper_bound,
-                            n_init=self.n_init,
-                            n_iter=self.n_iter,
-                            alpha=self.alpha,
-                            n_restarts_optimizer=self.n_restarts_optimizer,
-                            seed=self.seed,
-                            n_jobs=self.n_jobs,
-                            acquisition=self.acquisition,
-                            method=self.method,
-                            min_value=self.min_value,
-                            surrogate_obj=copy.deepcopy(self.regressors[i][1]),
+                    gp_opt_obj.optimize(
+                        verbose=verbose,
+                        abs_tol=abs_tol,  # suggested 1e-4, for n_iter = 200
+                        ucb_tol=ucb_tol,
+                        min_budget=min_budget,  # minimum budget for early stopping
+                        func_args=func_args,
+                    )
+
+                    score_next_param = gp_opt_obj.y_min
+
+                    if score_next_param < self.y_min:
+                        self.x_min = gp_opt_obj.x_min
+                        self.y_min = score_next_param
+                        self.best_surrogate = copy.deepcopy(
+                            gp_opt_obj.surrogate_obj
+                        )
+                        if self.y_min == self.min_value:
+                            break
+
+                    if verbose == 2:
+                        print(f"Global iteration #{i + 1} -----")
+                        print(f"current minimum:  {self.x_min}")
+                        print(f"current minimum score:  {self.y_min}")
+                        print(
+                            f"score for next parameter: {score_next_param} \n"
                         )
 
-                        gp_opt_obj.optimize(
-                            verbose=verbose,
-                            abs_tol=abs_tol,  # suggested 1e-4, for n_iter = 200
-                            min_budget=min_budget,  # minimum budget for early stopping
-                            func_args=func_args,
-                        )
+                    #except ValueError:
 
-                        score_next_param = gp_opt_obj.y_min
-
-                        if score_next_param < self.y_min:
-                            self.x_min = gp_opt_obj.x_min
-                            self.y_min = score_next_param
-                            self.best_surrogate = copy.deepcopy(
-                                gp_opt_obj.surrogate_obj
-                            )
-                            if self.y_min == self.min_value:
-                                break
-
-                        if verbose == 2:
-                            print(f"Global iteration #{i + 1} -----")
-                            print(f"current minimum:  {self.x_min}")
-                            print(f"current minimum score:  {self.y_min}")
-                            print(
-                                f"score for next parameter: {score_next_param} \n"
-                            )
-
-                    except ValueError:
-
-                        continue
+                    #    continue
 
             elif self.n_jobs >= 2 or self.n_jobs == -1:  # parallel optimization
 
@@ -1184,6 +1205,7 @@ class GPOpt:
                         gp_opt_obj.optimize(
                             verbose=0,  # important
                             abs_tol=abs_tol,  # suggested 1e-4, for n_iter = 200
+                            ucb_tol=ucb_tol,
                             min_budget=min_budget,  # minimum budget for early stopping
                             func_args=func_args,
                         )
