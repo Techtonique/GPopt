@@ -5,6 +5,7 @@ import numpy as np
 from os import chdir
 from scipy.optimize import minimize
 from sklearn.ensemble import ExtraTreesRegressor, RandomForestRegressor
+from sklearn.linear_model import RidgeCV
 
 print(f"\n ----- Running: {os.path.basename(__file__)}... ----- \n")
 
@@ -59,6 +60,23 @@ gp_opt3 = gp.GPOpt(lower_bound = np.repeat(0, 6),
                    )
 
 gp_opt3.optimize(verbose=2, ucb_tol=4e-3)
+
+
+gp_opt3 = gp.GPOpt(lower_bound = np.repeat(0, 6), 
+                   upper_bound = np.repeat(1, 6),                 
+                   objective_func=hart6, 
+                   n_choices=25000, 
+                   n_init=10, 
+                   n_iter=90,   
+                   seed=4327, 
+                   acquisition="ucb",
+                   method="splitconformal",
+                   surrogate_obj=ns.PredictionInterval(obj=RidgeCV(), 
+                                                       method="splitconformal")
+                   )
+
+gp_opt3.optimize(verbose=2, ucb_tol=2e-3)
+
 
 
 
