@@ -847,7 +847,11 @@ class GPOpt:
 
                 if len(self.max_acq) > min_budget:
 
-                    if self.ucb[-1] - self.acq[-1] <= ucb_tol: # self.ucb is the upper confidence bound for UCB criterion
+                    print(f"self.ucb: {self.ucb}")
+                    print(f"self.acq: {self.acq}")
+                    print(f"mean(self.ucb/self.acq): {np.mean(self.ucb/self.acq)/100}")
+
+                    if np.abs(np.mean(self.ucb/self.acq)/100) <= ucb_tol: # self.ucb is the upper confidence bound for UCB criterion
 
                         iter_stop = len(self.max_acq)
 

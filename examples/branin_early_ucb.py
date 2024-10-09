@@ -48,9 +48,10 @@ gp_opt1 = gp.GPOpt(x_init = X_init,
                    lower_bound = np.array([-5, 0]), 
                    upper_bound = np.array([10, 15]), 
                    objective_func=branin, 
+                   acquisition="ucb",
                    n_choices=25000, 
                    n_init=20, 
                    n_iter=90,                    
                    seed=4327)
 
-gp_opt1.optimize(verbose=2, ucb_tol=1e-4)
+gp_opt1.optimize(verbose=2, ucb_tol=3e-3)
