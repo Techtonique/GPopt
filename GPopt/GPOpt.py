@@ -110,7 +110,7 @@ class GPOpt:
         x_init=None,
         y_init=None,
         n_init=10,
-        n_choices=25000,
+        n_choices=100000,
         n_iter=190,
         alpha=1e-6,
         n_restarts_optimizer=25,
