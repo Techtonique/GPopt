@@ -31,6 +31,7 @@ REMOVED_REGRESSORS = [
     "RegressorChain",
     "StackingRegressor",
     "SVR",
+    "TweedieRegressor",
     "VotingRegressor",
 ]
 
