@@ -84,7 +84,7 @@ class GPOpt:
         
         method: an str;
             "bayesian" (default) for Gaussian posteriors, "mc" for Monte Carlo posteriors, 
-            "splitconformal" for conformalized surrogates 
+            "splitconformal" (only for acquisition = "ucb") for conformalized surrogates 
 
         min_value: a float;
             minimum value of the objective function (default is None). For example,
