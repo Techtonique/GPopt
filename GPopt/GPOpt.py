@@ -7,6 +7,7 @@
 import copy
 import nnetsauce as ns
 import numpy as np
+import pandas as pd
 import pickle
 import shelve
 from collections import namedtuple
@@ -929,7 +930,7 @@ class GPOpt:
                 surrogate models are adjusted one after the other, on a design set with
                 increasing size;
 
-        """
+        """        
 
         if estimators == "all":
 
@@ -986,6 +987,9 @@ class GPOpt:
                         and (est[0] in estimators)
                     )
                 ]
+        
+        df_res = pd.DataFrame(np.zeros((len(self.regressors), 2)), 
+                              columns=["Model", "Score"])
 
         self.surrogate_fit_predict = partial(
             self.surrogate_fit_predict, return_pi=True
@@ -1002,13 +1006,15 @@ class GPOpt:
             score_next_param = np.inf
 
             DescribeResult = namedtuple(
-                "DescribeResult", ("best_params", "best_score")
+                "DescribeResult", ("best_params", "best_score", "scores")
             )
 
             if verbose == 2:
                 print(
                     f"\n adjusting surrogate model # {1} ({self.regressors[0][0]})... \n"
                 )
+
+            df_res.iloc[0, 0] = self.regressors[0][0]
 
             gp_opt_obj_prev = GPOpt(
                 objective_func=self.objective_func,
@@ -1036,6 +1042,8 @@ class GPOpt:
 
             score_next_param = gp_opt_obj_prev.y_min
 
+            df_res.iloc[0, 1] = score_next_param
+
             if self.n_jobs is None:  # sequential optimization
 
                 for i in range(len(self.regressors)):
@@ -1046,6 +1054,8 @@ class GPOpt:
                             print(
                                 f"\n adjusting surrogate model # {i + 2} ({self.regressors[i][0]})... \n"
                             )
+                        
+                        df_res.iloc[i, 0] = self.regressors[i][0]
 
                         gp_opt_obj = GPOpt(
                             objective_func=self.objective_func,
@@ -1075,6 +1085,8 @@ class GPOpt:
 
                         score_next_param = gp_opt_obj.y_min
 
+                        df_res.iloc[i, 1] = score_next_param
+
                         if score_next_param < self.y_min:
                             self.x_min = gp_opt_obj.x_min
                             self.y_min = score_next_param
@@ -1101,7 +1113,7 @@ class GPOpt:
                 raise ValueError(
                     "n_jobs must be either None or >= 2 or equal to -1"
                 )
-            return DescribeResult(self.x_min, self.y_min)
+            return DescribeResult(self.x_min, self.y_min, df_res.sort_values(by="Score"))
 
         elif (
             type_exec == "independent"
@@ -1115,7 +1127,7 @@ class GPOpt:
 
             DescribeResult = namedtuple(
                 "DescribeResult",
-                ("best_params", "best_score", "best_surrogate"),
+                ("best_params", "best_score", "best_surrogate", "scores"),
             )
 
             if verbose == 2:
@@ -1133,6 +1145,8 @@ class GPOpt:
                         print(
                             f"\n adjusting surrogate model # {i + 1} ({self.regressors[i][0]})... \n"
                         )
+                    
+                    df_res.iloc[i, 0] = self.regressors[i][0]
                     
                     gp_opt_obj = GPOpt(
                         objective_func=self.objective_func,
@@ -1160,6 +1174,8 @@ class GPOpt:
 
                     score_next_param = gp_opt_obj.y_min
 
+                    df_res.iloc[i, 1] = score_next_param
+
                     if score_next_param < self.y_min:
                         self.x_min = gp_opt_obj.x_min
                         self.y_min = score_next_param
@@ -1184,6 +1200,8 @@ class GPOpt:
             elif self.n_jobs >= 2 or self.n_jobs == -1:  # parallel optimization
 
                 def foo(i):
+
+                    df_res.iloc[i, 0] = self.regressors[i][0]
 
                     gp_opt_obj = GPOpt(
                         objective_func=self.objective_func,
@@ -1226,6 +1244,8 @@ class GPOpt:
 
                         score_next_param = gp_opt_obj.y_min
 
+                        df_res.iloc[i, 1] = score_next_param
+
                         if score_next_param < self.y_min:
                             self.x_min = gp_opt_obj.x_min
                             self.y_min = score_next_param
@@ -1251,7 +1271,9 @@ class GPOpt:
                 raise ValueError(
                     "n_jobs must be either None or >= 2 or equal to -1"
                 )
-            return DescribeResult(self.x_min, self.y_min, self.best_surrogate)
+            return DescribeResult(self.x_min, self.y_min, 
+                                  self.best_surrogate, 
+                                  df_res.sort_values(by="Score"))
 
         else:
 

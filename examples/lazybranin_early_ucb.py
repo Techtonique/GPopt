@@ -60,7 +60,7 @@ print(f"gp_opt1.method: {gp_opt1.method}")
 
 res = gp_opt1.lazyoptimize(verbose=2, 
                            type_pi="splitconformal",
-                           ucb_tol=1e-4)
+                           ucb_tol=1e-6)
 
 print(f"\n\n result: {res}")
 
