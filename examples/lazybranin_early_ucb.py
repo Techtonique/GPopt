@@ -53,7 +53,7 @@ gp_opt1 = gp.GPOpt(x_init = X_init,
                    acquisition="ucb",
                    method="splitconformal",                   
                    n_init=10, 
-                   n_iter=190,                    
+                   n_iter=90,                    
                    seed=4327)
 
 print(f"gp_opt1.method: {gp_opt1.method}")                   

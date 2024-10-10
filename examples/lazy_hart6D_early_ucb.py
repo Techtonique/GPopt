@@ -39,59 +39,23 @@ print("0 - hart6 minimize ----------")
 print(res.x)
 print(hart6(res.x))
 
+gp_opt1 = gp.GPOpt(objective_func=hart6, 
+                   lower_bound = np.repeat(0, 6), 
+                   upper_bound = np.repeat(1, 6), 
+                   acquisition="ucb",
+                   method="splitconformal",                   
+                   n_init=10, 
+                   n_iter=90,                    
+                   seed=4327)
 
-print("---------- \n")
-print("2 - Hartmann 6D")
-# hart6
-gp_opt1 = gp.GPOpt(objective_func=hart6,
-                lower_bound = np.repeat(0, 6), 
-                upper_bound = np.repeat(1, 6),
-                method="splitconformal",
-                acquisition="ucb",  
-                n_init=10, n_iter=90)    
+print(f"gp_opt1.method: {gp_opt1.method}")                   
+
+res = gp_opt1.lazyoptimize(verbose=2, 
+                           type_pi="splitconformal",
+                           ucb_tol=1e-6)
+
+print(f"\n\n result: {res}")
 
 
-print("\n 2 - 1 type_exec = 'independent' sequential")
-gp_opt1.lazyoptimize(verbose=2, ucb_tol=1e-4, 
-                     type_pi="splitconformal",
-                     type_exec = "independent",
-                     estimators = ["LinearRegression",
-                                    "RidgeCV",
-                                    "LassoCV",
-                                    "ElasticNetCV", 
-                                    "KNeighborsRegressor",
-                                    "BaggingRegressor",
-                                    "ExtraTreesRegressor", 
-                                    "RandomForestRegressor", 
-                                    ]
-                                    )
-print(gp_opt1.best_surrogate, gp_opt1.x_min, gp_opt1.y_min)
-print("\n")
-
-print("\n 2 - 1 type_exec = 'independent' parallel")
-gp_opt3 = gp.GPOpt(objective_func=hart6, 
-                lower_bound = np.repeat(0, 6), 
-                upper_bound = np.repeat(1, 6), 
-                method="splitconformal",
-                acquisition="ucb",    
-                 n_init=10, n_iter=190, 
-                 n_jobs=-1)    
-
-print("\n 2 - 1 type_exec = 'independent'")
-start = time()
-gp_opt3.lazyoptimize(verbose=2, ucb_tol=1e-2, 
-                     type_pi="splitconformal",
-                     type_exec = "independent",
-                     estimators = ["LinearRegression", 
-                                   "Ridge"
-                                   "ElasticNet",
-                                   "Lasso",                                  
-                                    "BaggingRegressor",
-                                    "ExtraTreesRegressor", 
-                                    ]
-                                    )
-print(gp_opt3.best_surrogate, gp_opt3.x_min, gp_opt3.y_min)
-print("Elapsed (total): ", time() - start)
-print("\n")
 
 

@@ -930,7 +930,37 @@ class GPOpt:
                 surrogate models are adjusted one after the other, on a design set with
                 increasing size;
 
-        """        
+        """         
+        
+        # Base case: Gaussian Process
+        gp_opt_obj = GPOpt(
+            objective_func=self.objective_func,
+            lower_bound=self.lower_bound,
+            upper_bound=self.upper_bound,
+            n_init=self.n_init,
+            n_iter=self.n_iter,
+            alpha=self.alpha,
+            n_restarts_optimizer=self.n_restarts_optimizer,
+            seed=self.seed,
+            n_jobs=self.n_jobs,
+            acquisition="ei",           
+            surrogate_obj=GaussianProcessRegressor(
+            kernel=Matern(nu=2.5),
+            alpha=self.alpha,
+            normalize_y=True,
+            n_restarts_optimizer=self.n_restarts_optimizer,
+            random_state=self.seed,
+        ))
+        if verbose == 2:
+            print(
+                f"\n adjusting surrogate model # {0} (GaussianProcessRegressor(Matern(5/2)))... \n"
+            )
+        res_base = gp_opt_obj.optimize(
+            verbose=verbose,
+            abs_tol=abs_tol,  # suggested 1e-4, for n_iter = 200
+            min_budget=min_budget,  # minimum budget for early stopping
+            func_args=func_args,
+        )        
 
         if estimators == "all":
 
@@ -988,9 +1018,11 @@ class GPOpt:
                     )
                 ]
         
-        df_res = pd.DataFrame(np.zeros((len(self.regressors), 2)), 
+        df_res = pd.DataFrame(np.empty((len(self.regressors) + 1, 2)), 
                               columns=["Model", "Score"])
-
+        df_res.iloc[0, 0] = "GaussianProcessRegressor"
+        df_res.iloc[0, 1] = res_base.best_score      
+        
         self.surrogate_fit_predict = partial(
             self.surrogate_fit_predict, return_pi=True
         )
@@ -1055,7 +1087,7 @@ class GPOpt:
                                 f"\n adjusting surrogate model # {i + 2} ({self.regressors[i][0]})... \n"
                             )
                         
-                        df_res.iloc[i, 0] = self.regressors[i][0]
+                        df_res["Model"][i+1] = self.regressors[i][0]
 
                         gp_opt_obj = GPOpt(
                             objective_func=self.objective_func,
@@ -1146,7 +1178,7 @@ class GPOpt:
                             f"\n adjusting surrogate model # {i + 1} ({self.regressors[i][0]})... \n"
                         )
                     
-                    df_res.iloc[i, 0] = self.regressors[i][0]
+                    df_res["Model"][i+1] = self.regressors[i][0]
                     
                     gp_opt_obj = GPOpt(
                         objective_func=self.objective_func,
@@ -1201,7 +1233,7 @@ class GPOpt:
 
                 def foo(i):
 
-                    df_res.iloc[i, 0] = self.regressors[i][0]
+                    df_res["Model"][i+1] = self.regressors[i][0]
 
                     gp_opt_obj = GPOpt(
                         objective_func=self.objective_func,
