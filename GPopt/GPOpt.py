@@ -340,7 +340,7 @@ class GPOpt:
                 assert self.acquisition == "ucb", "'acquisition' must be 'ucb' for conformalized surrogates"
                 self.posterior_ = None 
                 res = self.surrogate_obj.fit(X_train, y_train).predict(
-                    X_test, return_pi=True)
+                    X_test, return_pi=True, method="splitconformal")
                 self.y_mean = res.mean
                 self.y_lower = res.lower 
                 self.y_upper = res.upper 
