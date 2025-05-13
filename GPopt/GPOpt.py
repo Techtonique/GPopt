@@ -316,7 +316,9 @@ class GPOpt:
         if return_std == True:
 
             self.posterior_ = "gaussian"
-            return self.surrogate_obj.fit(X_train, y_train).predict(
+            self.surrogate_obj.fit(X_train, y_train)
+            print("self.surrogate_obj.y_mean_", self.surrogate_obj.y_mean_)
+            return self.surrogate_obj.predict(
                 X_test, return_std=True
             )
         
@@ -325,7 +327,9 @@ class GPOpt:
             if self.surrogate_obj.replications is not None: 
 
                 self.posterior_ = "mc"
-                res = self.surrogate_obj.fit(X_train, y_train).predict(
+                self.surrogate_obj.fit(X_train, y_train)
+                print("self.surrogate_obj.y_mean_", self.surrogate_obj.y_mean_)
+                res = self.surrogate_obj.predict(
                     X_test, return_pi=True, method="splitconformal"
                 )
                 self.y_sims = res.sims
@@ -338,12 +342,14 @@ class GPOpt:
             else: # self.surrogate_obj is conformalized (uses nnetsauce.PredictionInterval)
 
                 assert self.acquisition == "ucb", "'acquisition' must be 'ucb' for conformalized surrogates"
-                self.posterior_ = None 
-                print("self.surrogate_obj")
+                self.posterior_ = None                 
                 print("X_train", X_train)
                 print("X_test", X_test)
-
-                res = self.surrogate_obj.fit(X_train, y_train).predict(
+                
+                self.surrogate_obj.fit(X_train, y_train)
+                print("self.surrogate_obj.y_mean_", 
+                      self.surrogate_obj.y_mean_)
+                res = self.surrogate_obj.predict(
                     X_test, return_pi=True, method="splitconformal")
                 self.y_mean = res.mean
                 self.y_lower = res.lower 
