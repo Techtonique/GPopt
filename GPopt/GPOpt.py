@@ -345,7 +345,7 @@ class GPOpt:
                 self.posterior_ = None                 
                 print("X_train", X_train)
                 print("X_test", X_test)
-                
+                print("y_train", y_train)                
                 self.surrogate_obj.fit(X_train, y_train)
                 print("self.surrogate_obj.y_mean_", 
                       self.surrogate_obj.y_mean_)
