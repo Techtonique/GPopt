@@ -48,6 +48,7 @@ class GPOpt:
 
         surrogate_obj: an object;
             An ML model for estimating the uncertainty around the objective function
+            Must be nnetsauce.CustomRegressor or nnetsauce.PredictionInterval
 
         x_init:
             initial setting of points where `objective_func` is evaluated (optional)
@@ -97,7 +98,7 @@ class GPOpt:
             __experimental__, default is False (leave to default for now)
 
     see also [Bayesian Optimization with GPopt](https://thierrymoudiki.github.io/blog/2021/04/16/python/misc/gpopt)
-        and [Hyperparameters tuning with GPopt](https://thierrymoudiki.github.io/blog/2021/06/11/python/misc/hyperparam-tuning-gpopt)
+        or [Hyperparameters tuning with GPopt](https://thierrymoudiki.github.io/blog/2021/06/11/python/misc/hyperparam-tuning-gpopt) [Agnostic BayesOpt](https://thierrymoudiki.github.io/blog/2024/12/09/python/bayesconfoptim)
 
     """
 
@@ -317,7 +318,6 @@ class GPOpt:
 
             self.posterior_ = "gaussian"
             self.surrogate_obj.fit(X_train, y_train)
-            print("self.surrogate_obj.y_mean_", self.surrogate_obj.y_mean_)
             return self.surrogate_obj.predict(
                 X_test, return_std=True
             )
@@ -328,10 +328,12 @@ class GPOpt:
 
                 self.posterior_ = "mc"
                 self.surrogate_obj.fit(X_train, y_train)
-                print("self.surrogate_obj.y_mean_", self.surrogate_obj.y_mean_)
-                res = self.surrogate_obj.predict(
-                    X_test, return_pi=True, method="splitconformal"
-                )
+                try: 
+                    res = self.surrogate_obj.predict(X_test, return_pi=True, 
+                                                     method="splitconformal")
+                except Exception:
+                    res = self.surrogate_obj.predict(
+                        X_test, return_pi=True)
                 self.y_sims = res.sims
                 self.y_mean, self.y_std = (
                     np.mean(self.y_sims, axis=1),
@@ -343,15 +345,12 @@ class GPOpt:
 
                 assert self.acquisition == "ucb", "'acquisition' must be 'ucb' for conformalized surrogates"
                 self.posterior_ = None                 
-                print("X_train", X_train)
-                print("X_test", X_test)
-                print("y_train", y_train)                
                 self.surrogate_obj.fit(X_train, y_train)
-                print("self.surrogate_obj", self.surrogate_obj)
-                print("self.surrogate_obj.y_mean_", 
-                      self.surrogate_obj.y_mean_)
-                res = self.surrogate_obj.predict(
-                    X_test, return_pi=True, method="splitconformal")
+                try: 
+                    res = self.surrogate_obj.predict(X_test, return_pi=True, 
+                                                     method="splitconformal")
+                except Exception:
+                    res = self.surrogate_obj.predict(X_test, return_pi=True)
                 self.y_mean = res.mean
                 self.y_lower = res.lower 
                 self.y_upper = res.upper 
