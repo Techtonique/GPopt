@@ -328,12 +328,16 @@ class GPOpt:
 
                 self.posterior_ = "mc"
                 self.surrogate_obj.fit(X_train, y_train)
-                try: 
+                try: # it's a nnetsauce.CustomRegressor
                     res = self.surrogate_obj.predict(X_test, return_pi=True, 
                                                      method="splitconformal")
-                except Exception:
-                    res = self.surrogate_obj.predict(
-                        X_test, return_pi=True)
+                except Exception: # it's a nnetsauce.PredictionInterval
+                    try: 
+                        res = self.surrogate_obj.predict(
+                            X_test, return_pi=True)
+                    except Exception as e:
+                        print(str(e) + "Sureproof way is to encapsulate your surrogate in nnetsauce.PredictionInterval model")
+
                 self.y_sims = res.sims
                 self.y_mean, self.y_std = (
                     np.mean(self.y_sims, axis=1),
@@ -346,6 +350,8 @@ class GPOpt:
                 assert self.acquisition == "ucb", "'acquisition' must be 'ucb' for conformalized surrogates"
                 self.posterior_ = None                 
                 self.surrogate_obj.fit(X_train, y_train)
+                print("self.surrogate_obj.aic_", 
+                      self.surrogate_obj.aic_)
                 try: 
                     res = self.surrogate_obj.predict(X_test, return_pi=True, 
                                                      method="splitconformal")

@@ -75,7 +75,8 @@ dist: clean ## builds source and wheel package
 	ls -l dist
 
 install: clean ## install the package to the active Python's site-packages
-	python3 -m pip install .
+	#python3 -m pip install .
+	uv pip install -e .
 
 build-site: docs ## export mkdocs website to a folder	
 	cp -rf gpopt-docs/* ../../Pro_Website/Techtonique.github.io/GPopt
