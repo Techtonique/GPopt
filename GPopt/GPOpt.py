@@ -20,6 +20,8 @@ from sklearn.base import RegressorMixin
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.gaussian_process.kernels import Matern
+from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
+
 import scipy.stats as st
 from joblib import Parallel, delayed
 from time import time
@@ -302,12 +304,25 @@ class GPOpt:
 
     # fit predict
     def surrogate_fit_predict(
-        self, X_train, y_train, X_test, return_std=False, return_pi=False
+        self, X_train, y_train, X_test, return_std=False, return_pi=False,
+        param_search_init_design=False, param_distributions=None, **kwargs
     ):
 
         if len(X_train.shape) == 1:
             X_train = X_train.reshape((-1, 1))
             X_test = X_test.reshape((-1, 1))
+        
+        if X_train.shape[0] <= self.n_init and param_search_init_design == True: # on initial design
+            try: 
+                rs_obj = RandomizedSearchCV(self.surrogate_obj, 
+                                            param_distributions=param_distributions, 
+                                            random_state=42,
+                                            cv=3,
+                                            **kwargs)
+                rs_obj.fit(X_train, y_train)
+                self.surrogate_obj = rs_obj.best_estimator_
+            except Exception as e: 
+                print(str(e))
 
         # Get mean and standard deviation (+ lower and upper for not GPs)
         assert (
@@ -464,6 +479,8 @@ class GPOpt:
         ucb_tol=None,
         min_budget=50,  # minimum budget for early stopping
         func_args=None,        
+        param_search_init_design=False, 
+        param_distributions=None
     ):
         """Launch optimization loop.
 
@@ -488,7 +505,17 @@ class GPOpt:
                 minimum number of iterations before early stopping controlled by `abs_tol`
 
             func_args: a list;
-                additional parameters for the objective function (if necessary)            
+                additional parameters for the objective function (if necessary)  
+
+            param_search_init_design: a boolean;
+                whether random search tuning must occur on the initial design or not
+            
+            param_distributions: dict or list of dicts;
+                Dictionary with parameters names (str) as keys and distributions or lists of 
+                parameters to try. Distributions must provide a rvs method for sampling 
+                (such as those from scipy.stats.distributions). If a list is given, it 
+                is sampled uniformly. If a list of dicts is given, first a dict is sampled 
+                uniformly, and then a parameter is sampled using that dict as above.                        
 
         see also [Bayesian Optimization with GPopt](https://thierrymoudiki.github.io/blog/2021/04/16/python/misc/gpopt)
         and [Hyperparameters tuning with GPopt](https://thierrymoudiki.github.io/blog/2021/06/11/python/misc/hyperparam-tuning-gpopt)
@@ -607,64 +634,138 @@ class GPOpt:
 
             # current gp mean and std on initial design
             # /!\ if GP
-            if self.method == "bayesian":                
-                self.posterior_ = "gaussian"
-                try:
-                    y_mean, y_std = self.surrogate_fit_predict(
-                        np.asarray(self.parameters),
-                        np.asarray(self.scores),
-                        self.x_choices,
-                        return_std=True,
-                        return_pi=False,
-                    )
-                except ValueError:  # do not remove this
+            if param_search_init_design == False: 
+
+                if self.method == "bayesian":                
+                    self.posterior_ = "gaussian"
+                    try:
+                        y_mean, y_std = self.surrogate_fit_predict(
+                            np.asarray(self.parameters),
+                            np.asarray(self.scores),
+                            self.x_choices,
+                            return_std=True,
+                            return_pi=False,
+                        )
+                    except ValueError:  # do not remove this
+                        preds_with_std = self.surrogate_fit_predict(
+                            np.asarray(self.parameters),
+                            np.asarray(self.scores),
+                            self.x_choices,
+                            return_std=True,
+                            return_pi=False,
+                        )
+                        y_mean, y_std = preds_with_std[0], preds_with_std[1]
+                    self.y_mean = y_mean
+                    self.y_std = np.maximum(2.220446049250313e-16, y_std)                
+
+                elif self.method == "mc":
+
+                    self.posterior_ = "mc"
+                    assert self.surrogate_obj.__class__.__name__.startswith(
+                        "CustomRegressor"
+                    ) or self.surrogate_obj.__class__.__name__.startswith(
+                        "PredictionInterval"
+                    ), "for `method = 'mc'`, the surrogate must be a nnetsauce.CustomRegressor() or nnetsauce.PredictionInterval()"
+                    assert (
+                        self.surrogate_obj.replications is not None
+                    ), "for `method = 'mc'`, the surrogate must be a nnetsauce.CustomRegressor() with a number of 'replications' provided"
                     preds_with_std = self.surrogate_fit_predict(
                         np.asarray(self.parameters),
                         np.asarray(self.scores),
                         self.x_choices,
-                        return_std=True,
-                        return_pi=False,
+                        return_std=False,
+                        return_pi=True,
                     )
                     y_mean, y_std = preds_with_std[0], preds_with_std[1]
-                self.y_mean = y_mean
-                self.y_std = np.maximum(2.220446049250313e-16, y_std)
+                    self.y_mean = y_mean
+                    self.y_std = np.maximum(2.220446049250313e-16, y_std)
                 
-
-            elif self.method == "mc":
-                self.posterior_ = "mc"
-                assert self.surrogate_obj.__class__.__name__.startswith(
-                    "CustomRegressor"
-                ) or self.surrogate_obj.__class__.__name__.startswith(
-                    "PredictionInterval"
-                ), "for `method = 'mc'`, the surrogate must be a nnetsauce.CustomRegressor() or nnetsauce.PredictionInterval()"
-                assert (
-                    self.surrogate_obj.replications is not None
-                ), "for `method = 'mc'`, the surrogate must be a nnetsauce.CustomRegressor() with a number of 'replications' provided"
-                preds_with_std = self.surrogate_fit_predict(
-                    np.asarray(self.parameters),
-                    np.asarray(self.scores),
-                    self.x_choices,
-                    return_std=False,
-                    return_pi=True,
-                )
-                y_mean, y_std = preds_with_std[0], preds_with_std[1]
-                self.y_mean = y_mean
-                self.y_std = np.maximum(2.220446049250313e-16, y_std)
+                elif self.method == "splitconformal":
+                    self.posterior_ = None
+                    #assert self.surrogate_obj.__class__.__name__.startswith(
+                    #    "PredictionInterval"
+                    #), "for `method = 'splitconformal'`, the surrogate must be a nnetsauce.PredictionInterval()"
+                    preds_with_pi = self.surrogate_fit_predict(
+                        np.asarray(self.parameters),
+                        np.asarray(self.scores),
+                        self.x_choices,
+                        return_std=False,
+                        return_pi=True,
+                    )
+                    y_lower = preds_with_pi[1]  
+                    self.lower = y_lower  
             
-            elif self.method == "splitconformal":
-                self.posterior_ = None
-                #assert self.surrogate_obj.__class__.__name__.startswith(
-                #    "PredictionInterval"
-                #), "for `method = 'splitconformal'`, the surrogate must be a nnetsauce.PredictionInterval()"
-                preds_with_pi = self.surrogate_fit_predict(
-                    np.asarray(self.parameters),
-                    np.asarray(self.scores),
-                    self.x_choices,
-                    return_std=False,
-                    return_pi=True,
-                )
-                y_lower = preds_with_pi[1]  
-                self.lower = y_lower  
+            else:
+
+                assert param_distributions is not None,\
+                      "When 'param_search_init_design == False', 'param_distributions' must be provided"
+
+                if self.method == "bayesian":                
+                    self.posterior_ = "gaussian"
+                    try:
+                        y_mean, y_std = self.surrogate_fit_predict(
+                            np.asarray(self.parameters),
+                            np.asarray(self.scores),
+                            self.x_choices,
+                            return_std=True,
+                            return_pi=False,
+                            param_search_init_design=True,
+                            param_distributions=param_distributions
+                        )
+                    except ValueError:  # do not remove this
+                        preds_with_std = self.surrogate_fit_predict(
+                            np.asarray(self.parameters),
+                            np.asarray(self.scores),
+                            self.x_choices,
+                            return_std=True,
+                            return_pi=False,
+                            param_search_init_design=True,
+                            param_distributions=param_distributions
+                        )
+                        y_mean, y_std = preds_with_std[0], preds_with_std[1]
+                    self.y_mean = y_mean
+                    self.y_std = np.maximum(2.220446049250313e-16, y_std)                
+
+                elif self.method == "mc":
+
+                    self.posterior_ = "mc"
+                    assert self.surrogate_obj.__class__.__name__.startswith(
+                        "CustomRegressor"
+                    ) or self.surrogate_obj.__class__.__name__.startswith(
+                        "PredictionInterval"
+                    ), "for `method = 'mc'`, the surrogate must be a nnetsauce.CustomRegressor() or nnetsauce.PredictionInterval()"
+                    assert (
+                        self.surrogate_obj.replications is not None
+                    ), "for `method = 'mc'`, the surrogate must be a nnetsauce.CustomRegressor() with a number of 'replications' provided"
+                    preds_with_std = self.surrogate_fit_predict(
+                        np.asarray(self.parameters),
+                        np.asarray(self.scores),
+                        self.x_choices,
+                        return_std=False,
+                        return_pi=True,
+                        param_search_init_design=True,
+                        param_distributions=param_distributions
+                    )
+                    y_mean, y_std = preds_with_std[0], preds_with_std[1]
+                    self.y_mean = y_mean
+                    self.y_std = np.maximum(2.220446049250313e-16, y_std)
+                
+                elif self.method == "splitconformal":
+                    self.posterior_ = None
+                    #assert self.surrogate_obj.__class__.__name__.startswith(
+                    #    "PredictionInterval"
+                    #), "for `method = 'splitconformal'`, the surrogate must be a nnetsauce.PredictionInterval()"
+                    preds_with_pi = self.surrogate_fit_predict(
+                        np.asarray(self.parameters),
+                        np.asarray(self.scores),
+                        self.x_choices,
+                        return_std=False,
+                        return_pi=True,
+                        param_search_init_design=True,
+                        param_distributions=param_distributions
+                    )
+                    y_lower = preds_with_pi[1]  
+                    self.lower = y_lower              
 
             # saving after initial design computation
             if self.save is not None:
