@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 from codecs import open
 from os import path
 
-__version__ = "0.9.1"
+__version__ = "0.9.2"
 
 subprocess.call("pip install -r requirements.txt", shell=True)
 
