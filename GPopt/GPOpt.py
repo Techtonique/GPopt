@@ -121,7 +121,7 @@ class GPOpt:
         n_restarts_optimizer=25,
         seed=123,
         save=None,
-        n_jobs=None,
+        n_jobs=1,
         acquisition="ei",
         method="bayesian",
         min_value=None,
