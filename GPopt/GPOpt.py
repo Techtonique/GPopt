@@ -128,7 +128,6 @@ class GPOpt:
         per_second=False,  # /!\ very experimental
         log_scale=False,  # /!\ experimental
     ):
-
         n_dims = len(lower_bound)
 
         assert n_dims == len(
@@ -198,7 +197,6 @@ class GPOpt:
 
         # Sobol seqs for initial design and choices with bounds
         if self.log_scale == False:
-
             bounds_range = upper_bound - lower_bound
             self.x_init = (
                 bounds_range * sobol_seq_init + lower_bound
@@ -208,7 +206,6 @@ class GPOpt:
             self.x_choices = bounds_range * sobol_seq_choices + lower_bound
 
         else:  # (!) experimental
-
             assert (
                 lower_bound > 0
             ).all(), "all elements of `lower_bound` must be > 0"
@@ -315,7 +312,6 @@ class GPOpt:
         param_distributions=None,
         **kwargs,
     ):
-
         if len(X_train.shape) == 1:
             X_train = X_train.reshape((-1, 1))
             X_test = X_test.reshape((-1, 1))
@@ -342,7 +338,6 @@ class GPOpt:
         ) == False, "must have either return_std == True or return_pi == True"
 
         if return_std == True:
-
             self.posterior_ = "gaussian"
             self.surrogate_obj.fit(X_train, y_train)
             return self.surrogate_obj.predict(X_test, return_std=True)
@@ -350,9 +345,7 @@ class GPOpt:
         elif (
             return_pi == True
         ):  # here, self.surrogate_obj must have `replications` not None
-
             if self.surrogate_obj.replications is not None:
-
                 self.posterior_ = "mc"
                 self.surrogate_obj.fit(X_train, y_train)
                 try:  # it's a nnetsauce.CustomRegressor
@@ -376,7 +369,6 @@ class GPOpt:
                 return self.y_mean, self.y_std, self.y_sims
 
             else:  # self.surrogate_obj is conformalized (uses nnetsauce.PredictionInterval)
-
                 assert (
                     self.acquisition == "ucb"
                 ), "'acquisition' must be 'ucb' for conformalized surrogates"
@@ -394,12 +386,10 @@ class GPOpt:
                 return self.y_mean, self.y_lower, self.y_upper
 
         else:
-
             raise NotImplementedError
 
     # fit predict timings
     def timings_fit_predict(self, X_train, y_train, X_test):
-
         if len(X_train.shape) == 1:
             X_train = X_train.reshape((-1, 1))
             X_test = X_test.reshape((-1, 1))
@@ -409,9 +399,7 @@ class GPOpt:
 
     # find next parameter by using expected improvement (ei)
     def next_parameter_by_acq(self, i, acq="ei"):
-
         if acq == "ei":
-
             if self.posterior_ == "gaussian":
                 gamma_hat = (self.y_min - self.y_mean) / self.y_std
                 self.acq = -self.y_std * (
@@ -423,14 +411,11 @@ class GPOpt:
                 )
 
         if acq == "ucb":
-
             if self.posterior_ == "gaussian":
-
                 self.acq = self.y_mean - 1.96 * self.y_std
                 self.ucb = self.y_mean + 1.96 * self.y_std
 
             elif self.posterior_ is None:  # split conformal(ized) estimator
-
                 self.acq = self.y_lower
                 self.ucb = self.y_upper
 
@@ -441,7 +426,6 @@ class GPOpt:
             max_index = self.acq.argmin()
 
         else:  # self.per_second is True
-
             # predict timings on self.x_choices
             # train on X = self.parameters and y = self.timings
             # (must have same shape[0])
@@ -460,16 +444,13 @@ class GPOpt:
         next_param = self.x_choices[max_index, :]
 
         if next_param in np.asarray(self.parameters):
-
             if self.log_scale == False:
-
                 np.random.seed(self.seed * i + 1000)
                 next_param = (
                     self.upper_bound - self.lower_bound
                 ) * np.random.rand(self.n_dims) + self.lower_bound
 
             else:  # /!\ very... experimental
-
                 np.random.seed(self.seed)
                 log_upper_bound = np.log(self.upper_bound)
                 log_lower_bound = np.log(self.lower_bound)
@@ -546,7 +527,6 @@ class GPOpt:
         if (
             n_more_iter is None
         ):  # initial optimization, before more iters are requested
-
             n_iter = self.n_iter
             # stopping iter for early stopping (default is total budget)
             iter_stop = n_iter  # potentially # got to check this
@@ -566,21 +546,16 @@ class GPOpt:
                 self.update_shelve()
 
             if self.y_init is None:  # calculate scores on initial design
-
                 assert (
                     self.objective_func is not None
                 ), "self.y_init is None: must have 'objective_func' not None"
 
                 if self.n_jobs == 1:
-
                     for i in range(self.n_init):
-
                         x_next = self.x_init[i, :]
 
                         try:
-
                             if self.per_second is True:
-
                                 start = time()
                                 score = self.objective_func(x_next, *func_args)
                                 if (np.isfinite(score) == False) or (
@@ -590,7 +565,6 @@ class GPOpt:
                                 self.timings.append(np.log(time() - start))
 
                             else:  # self.per_second is False
-
                                 score = self.objective_func(x_next, *func_args)
                                 if (np.isfinite(score) == False) or (
                                     np.isnan(score) == True
@@ -603,7 +577,6 @@ class GPOpt:
                                 self.update_shelve()
 
                         except:
-
                             continue
 
                         if verbose == 1:
@@ -617,7 +590,6 @@ class GPOpt:
                         progbar.update(self.n_init)
 
                 else:  # self.n_jobs != 1
-
                     assert (
                         self.per_second is False
                     ), "timings not calculated here"
@@ -633,7 +605,6 @@ class GPOpt:
                         self.update_shelve()
 
             else:  # if self.y_init is not None:
-
                 assert self.x_init.shape[0] == len(
                     self.y_init
                 ), "must have: self.x_init.shape[0] == len(self.y_init)"
@@ -650,7 +621,6 @@ class GPOpt:
             # current gp mean and std on initial design
             # /!\ if GP
             if param_search_init_design == False:
-
                 if self.method == "bayesian":
                     self.posterior_ = "gaussian"
                     try:
@@ -674,7 +644,6 @@ class GPOpt:
                     self.y_std = np.maximum(2.220446049250313e-16, y_std)
 
                 elif self.method == "mc":
-
                     self.posterior_ = "mc"
                     assert self.surrogate_obj.__class__.__name__.startswith(
                         "CustomRegressor"
@@ -711,7 +680,6 @@ class GPOpt:
                     self.lower = y_lower
 
             else:
-
                 assert (
                     param_distributions is not None
                 ), "When 'param_search_init_design == False', 'param_distributions' must be provided"
@@ -743,7 +711,6 @@ class GPOpt:
                     self.y_std = np.maximum(2.220446049250313e-16, y_std)
 
                 elif self.method == "mc":
-
                     self.posterior_ = "mc"
                     assert self.surrogate_obj.__class__.__name__.startswith(
                         "CustomRegressor"
@@ -788,7 +755,6 @@ class GPOpt:
                 self.update_shelve()
 
         else:  # if n_more_iter is not None
-
             assert self.n_iter > 5, "you must have n_iter > 5"
             n_iter = n_more_iter
             iter_stop = len(self.max_acq) + n_more_iter  # potentially
@@ -829,18 +795,14 @@ class GPOpt:
         # main loop ----------
 
         for i in range(n_iter):
-
             # find next set of parameters (vector), maximizing acquisition function
             next_param = self.next_parameter_by_acq(i=i, acq=self.acquisition)
 
             try:
-
                 if self.per_second is True:
-
                     start = time()
 
                     if self.objective_func is not None:
-
                         score_next_param = self.objective_func(
                             next_param, *func_args
                         )
@@ -851,7 +813,6 @@ class GPOpt:
                             continue
 
                     else:
-
                         assert (self.x_init is not None) and (
                             self.y_init is not None
                         ), "self.objective_func is not None: must have (self.x_init is not None) and (self.y_init is not None)"
@@ -869,9 +830,7 @@ class GPOpt:
                     self.timings.append(np.log(time() - start))
 
                 else:  # self.per_second is False:
-
                     if self.objective_func is not None:
-
                         score_next_param = self.objective_func(
                             next_param, *func_args
                         )
@@ -882,7 +841,6 @@ class GPOpt:
                             continue
 
                     else:
-
                         assert (self.x_init is not None) and (
                             self.y_init is not None
                         ), "self.objective_func is not None: must have (self.x_init is not None) and (self.y_init is not None)"
@@ -898,7 +856,6 @@ class GPOpt:
                             continue
 
             except:
-
                 continue
 
             self.parameters.append(next_param.tolist())
@@ -933,28 +890,33 @@ class GPOpt:
                         return_pi=False,
                     )
                 except:
-                    self.y_mean, self.y_std, lower, upper = (
-                        self.surrogate_fit_predict(
-                            np.asarray(self.parameters),
-                            np.asarray(self.scores),
-                            self.x_choices,
-                            return_std=True,
-                            return_pi=False,
-                        )
+                    (
+                        self.y_mean,
+                        self.y_std,
+                        lower,
+                        upper,
+                    ) = self.surrogate_fit_predict(
+                        np.asarray(self.parameters),
+                        np.asarray(self.scores),
+                        self.x_choices,
+                        return_std=True,
+                        return_pi=False,
                     )
 
             elif self.posterior_ in (None, "mc") and self.method in (
                 "mc",
                 "splitconformal",
             ):
-                self.y_mean, self.y_lower, self.y_upper = (
-                    self.surrogate_fit_predict(
-                        np.asarray(self.parameters),
-                        np.asarray(self.scores),
-                        self.x_choices,
-                        return_std=False,
-                        return_pi=True,
-                    )
+                (
+                    self.y_mean,
+                    self.y_lower,
+                    self.y_upper,
+                ) = self.surrogate_fit_predict(
+                    np.asarray(self.parameters),
+                    np.asarray(self.scores),
+                    self.x_choices,
+                    return_std=False,
+                    return_pi=True,
                 )
 
             else:
@@ -969,22 +931,17 @@ class GPOpt:
             # early stopping
 
             if abs_tol is not None:
-
                 # if self.max_acq.size > (self.n_init + self.n_iter * min_budget_pct):
                 if len(self.max_acq) > min_budget:
-
                     diff_max_acq = np.abs(np.diff(np.asarray(self.max_acq)))
 
                     if diff_max_acq[-1] <= abs_tol:
-
                         iter_stop = len(self.max_acq)  # index i starts at 0
 
                         break
 
             if ucb_tol is not None:
-
                 if len(self.max_acq) > min_budget:
-
                     # print(f"self.ucb: {self.ucb}")
                     # print(f"self.acq: {self.acq}")
                     # print(f"mean(self.ucb/self.acq): {np.mean(self.ucb/self.acq)/100}")
@@ -992,7 +949,6 @@ class GPOpt:
                     if (
                         np.abs(np.mean(self.ucb / self.acq) / 100) <= ucb_tol
                     ):  # self.ucb is the upper confidence bound for UCB criterion
-
                         iter_stop = len(self.max_acq)
 
                         break
@@ -1011,11 +967,9 @@ class GPOpt:
         )
 
         if self.params_names is None:
-
             return DescribeResult(self.x_min, self.y_min)
 
         else:
-
             return DescribeResult(
                 dict(zip(self.params_names, self.x_min)), self.y_min
             )
@@ -1104,13 +1058,10 @@ class GPOpt:
         )
 
         if estimators == "all":
-
             if type_pi == "kde":
-
                 self.regressors = REGRESSORS
 
             else:
-
                 self.regressors = [
                     (
                         est[0],
@@ -1126,9 +1077,7 @@ class GPOpt:
                 ]
 
         else:
-
             if type_pi == "kde":
-
                 self.regressors = [
                     (
                         "CustomRegressor(" + est[0] + ")",
@@ -1145,7 +1094,6 @@ class GPOpt:
                 ]
 
             elif type_pi == "splitconformal":
-
                 self.regressors = [
                     (
                         est[0],
@@ -1174,7 +1122,6 @@ class GPOpt:
         if (
             type_exec == "queue"
         ):  # when models are adjusted one after the other on a design set with increasing size
-
             self.x_min = None
 
             self.y_min = np.inf
@@ -1221,11 +1168,8 @@ class GPOpt:
             df_res.iloc[0, 1] = score_next_param
 
             if self.n_jobs is None:  # sequential optimization
-
                 for i in range(len(self.regressors)):
-
                     try:
-
                         if verbose == 2:
                             print(
                                 f"\n adjusting surrogate model # {i + 2} ({self.regressors[i][0]})... \n"
@@ -1280,7 +1224,6 @@ class GPOpt:
                         gp_opt_obj_prev = copy.deepcopy(gp_opt_obj)
 
                     except ValueError:
-
                         continue
 
             elif self.n_jobs >= 2 or self.n_jobs == -1:  # parallel optimization
@@ -1296,7 +1239,6 @@ class GPOpt:
         elif (
             type_exec == "independent"
         ):  # when models are adjusted independently on the same design set and the best model is chosen eventually
-
             self.x_min = None
 
             self.y_min = np.inf
@@ -1314,9 +1256,7 @@ class GPOpt:
                 )
 
             if self.n_jobs is None:  # sequential optimization
-
                 for i in range(len(self.regressors)):
-
                     # try:
 
                     if verbose == 2:
@@ -1378,7 +1318,6 @@ class GPOpt:
             elif self.n_jobs >= 2 or self.n_jobs == -1:  # parallel optimization
 
                 def foo(i):
-
                     df_res["Model"][i + 1] = self.regressors[i][0]
 
                     gp_opt_obj = GPOpt(
@@ -1415,9 +1354,7 @@ class GPOpt:
                 )
 
                 for i in tqdm(range(len(tmp_results))):
-
                     if tmp_results[i] is not None:
-
                         gp_opt_obj = copy.deepcopy(tmp_results[i])
 
                         score_next_param = gp_opt_obj.y_min
@@ -1442,7 +1379,6 @@ class GPOpt:
                             )
 
                     else:
-
                         continue
 
             else:
@@ -1457,7 +1393,6 @@ class GPOpt:
             )
 
         else:
-
             NotImplementedError(
                 "type_exec must be either 'queue' or 'independent'"
             )

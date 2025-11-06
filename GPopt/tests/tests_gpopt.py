@@ -13,7 +13,6 @@ import matplotlib.pyplot as plt
 
 class TestBranin(ut.TestCase):
     def test_base_and_more_iter(self):
-
         # braninsc
         def braninsc(x):
             x1_bar = 15 * x[0] - 5
@@ -55,7 +54,6 @@ class TestBranin(ut.TestCase):
         self.assertTrue(np.allclose(res2[1], -1.0467104543674774))
 
     def test_early_stopping(self):
-
         # braninsc
         def braninsc(x):
             x1_bar = 15 * x[0] - 5
@@ -108,7 +106,6 @@ class TestBranin(ut.TestCase):
         self.assertTrue(np.allclose(gp_opt2.n_iter, 74))
 
     def test_save(self):
-
         # braninsc
         def braninsc(x):
             x1_bar = 15 * x[0] - 5
