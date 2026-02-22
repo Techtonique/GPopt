@@ -4,4 +4,10 @@ from .genericcv import MLOptimizer
 from .GeneralizationOpt import GeneralizationOpt
 from .GeneralizationOpt import GenericSurrogate
 
-__all__ = ["GPOpt", "BOstopping", "MLOptimizer", "GeneralizationOpt", "GenericSurrogate"]
+__all__ = [
+    "GPOpt",
+    "BOstopping",
+    "MLOptimizer",
+    "GeneralizationOpt",
+    "GenericSurrogate",
+]

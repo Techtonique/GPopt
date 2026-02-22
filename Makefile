@@ -54,19 +54,19 @@ coverage: ## check code coverage quickly with the default Python
 	$(BROWSER) htmlcov/index.html
 
 docs: install ## generate docs		
-	pip install black pdoc 
+	uv pip install black pdoc 
 	black GPopt/* --line-length=80	
 	pdoc -t docs GPopt/* --output-dir gpopt-docs
 	find . -name '__pycache__' -exec rm -fr {} +
 
 servedocs: install ## compile the docs watching for change	 	
-	pip install black pdoc 
+	uv pip install black pdoc 
 	black GPopt/* --line-length=80
 	pdoc -t docs GPopt/* 
 	find . -name '__pycache__' -exec rm -fr {} +
 
 release: dist ## package and upload a release
-	pip install twine --ignore-installed
+	uv pip install twine --ignore-installed
 	python3 -m twine upload --repository pypi dist/* --verbose
 
 dist: clean ## builds source and wheel package

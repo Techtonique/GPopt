@@ -2,7 +2,6 @@ import nnetsauce as ns
 from sklearn.base import RegressorMixin
 from sklearn.utils.discovery import all_estimators
 
-
 REMOVED_REGRESSORS = [
     "AdaBoostRegressor",
     "TheilSenRegressor",
